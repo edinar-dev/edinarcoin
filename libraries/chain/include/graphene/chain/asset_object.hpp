@@ -141,8 +141,8 @@ namespace graphene { namespace chain {
             // UIAs may not be prediction markets, have force settlement, or global settlements
             if( !is_market_issued() )
             {
-               FC_ASSERT(!(options.flags & disable_force_settle || options.flags & global_settle));
-               FC_ASSERT(!(options.issuer_permissions & disable_force_settle || options.issuer_permissions & global_settle));
+            //    FC_ASSERT(!(options.flags & disable_force_settle || options.flags & global_settle));
+            //    FC_ASSERT(!(options.issuer_permissions & disable_force_settle || options.issuer_permissions & global_settle));
             }
          }
 
