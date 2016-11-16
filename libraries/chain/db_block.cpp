@@ -270,8 +270,12 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
       auto session = _undo_db.start_undo_session(true);
       for( auto& op : proposal.proposed_transaction.operations )
          eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
-      remove(proposal);
-      session.merge();
+      remove(proposal);      
+      try {
+        session.merge();
+      } catch ( const fc::exception& e ) {
+        session.commit();
+      }
    } catch ( const fc::exception& e ) {
       if( head_block_time() <= HARDFORK_483_TIME )
       {
