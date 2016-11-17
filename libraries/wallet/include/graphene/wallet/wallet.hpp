@@ -336,6 +336,11 @@ class wallet_api
        */
       vector<operation_detail>  get_account_history(string name, int limit)const;
 
+      vector<operation_detail>  get_account_history_part(account_id_type account,
+                                                         operation_history_id_type stop = operation_history_id_type(),
+                                                         int limit = 100,
+                                                         operation_history_id_type start = operation_history_id_type())const;
+
 
       vector<bucket_object>             get_market_history(string symbol, string symbol2, uint32_t bucket)const;
       vector<limit_order_object>        get_limit_orders(string a, string b, uint32_t limit)const;
