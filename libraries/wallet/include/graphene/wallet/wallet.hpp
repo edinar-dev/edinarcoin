@@ -1617,6 +1617,7 @@ FC_API( graphene::wallet::wallet_api,
         (get_block)
         (get_account_count)
         (get_account_history)
+        (get_account_history_part)
         (get_market_history)
         (get_global_properties)
         (get_dynamic_global_properties)

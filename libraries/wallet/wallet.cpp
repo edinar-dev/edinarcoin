@@ -2804,14 +2804,6 @@ vector<operation_detail>  wallet_api::get_account_history_part(account_id_type a
 
    while( limit > 0 )
    {
-      operation_history_id_type start;
-      if( result.size() )
-      {
-         start = result.back().op.id;
-         start = start + 1;
-      }
-
-
       vector<operation_history_object> current = my->_remote_hist->get_account_history(account_id, stop, std::min(100,limit), start);
       for( auto& o : current ) {
          std::stringstream ss;

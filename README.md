@@ -1,10 +1,12 @@
 For Ubuntu users, see this link first:
+
     https://github.com/cryptonomex/graphene/wiki/build-ubuntu
 Windows: 
+
     https://github.com/cryptonomex/graphene/wiki/BUILD_WIN32
 OS X: 
-    https://github.com/cryptonomex/graphene/wiki/Building-on-OS-X
 
+    https://github.com/cryptonomex/graphene/wiki/Building-on-OS-X
 and then proceed with:
 
     git clone https://github.com/edincoin/EDINARCOIN.git
@@ -33,4 +35,5 @@ To import your initial balance:
 If you send private keys over this connection, `rpc-endpoint` should be bound to localhost for security.
 
 A list of CLI wallet commands is available here:
+
     https://github.com/edincoin/EDINARCOIN/blob/master/libraries/wallet/include/graphene/wallet/wallet.hpp
