@@ -93,6 +93,10 @@ namespace graphene { namespace app {
                                                               operation_history_id_type stop = operation_history_id_type(),
                                                               unsigned limit = 100,
                                                               operation_history_id_type start = operation_history_id_type())const;
+
+         vector<operation_history_object> get_account_operation_history(account_id_type account,
+                                                              unsigned operation_type,
+                                                              unsigned limit = 100)const;
          /**
           * @breif Get operations relevant to the specified account referenced
           * by an event numbering specific to the account. The current number of operations
@@ -312,6 +316,7 @@ FC_REFLECT( graphene::app::verify_range_proof_rewind_result,
 
 FC_API(graphene::app::history_api,
        (get_account_history)
+       (get_account_operation_history)
        (get_relative_account_history)
        (get_fill_order_history)
        (get_market_history)

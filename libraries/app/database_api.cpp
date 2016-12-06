@@ -39,7 +39,9 @@
 #include <cfenv>
 #include <iostream>
 #include <map>
-
+#include <future>
+#include <iostream>
+#include <utility>
 #define GET_REQUIRED_FEES_MAX_RECURSION 4
 
 namespace graphene { namespace app {
@@ -83,6 +85,10 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       std::map<string,full_account> get_full_accounts( const vector<string>& names_or_ids, bool subscribe );
       optional<account_object> get_account_by_name( string name )const;
       Unit get_referrals( optional<account_object> account ) const;
+      ref_info get_referrals_by_id( optional<account_object> account ) const;
+      vector<SimpleUnit> get_accounts_info(vector<optional<account_object>> accounts);
+      fc::variant_object get_user_count_by_ranks() const;
+      int64_t get_user_count_with_balances(fc::time_point_sec start, fc::time_point_sec end) const;
       vector<account_id_type> get_account_references( account_id_type account_id )const;
       vector<optional<account_object>> lookup_account_names(const vector<string>& account_names)const;
       map<string,account_id_type> lookup_accounts(const string& lower_bound_name, uint32_t limit)const;
@@ -1935,29 +1941,214 @@ void database_api_impl::on_applied_block()
       }
    });
 }    
+ref_info database_api::get_referrals_by_id(string account_name_or_id) {
+   auto account = get_account_by_name(account_name_or_id);
+   FC_ASSERT(account.valid(), "invalid account");
+   return my->get_referrals_by_id(account);
+}
+ref_info database_api_impl::get_referrals_by_id( optional<account_object> account ) const {
+    const auto& idx = _db.get_index_type<chain::account_index>();
+    auto asset = _db.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+    auto& bal_idx = _db.get_index_type<account_balance_index>();
+    referral_tree rtree( idx, bal_idx, asset->id, account->id );
+    rtree.form();
+    leaf_info root = *rtree.referral_map.find(account->id)->second;
+    ref_info result( root, account->name );
+    for (child_balance e: root.child_balances) {
+        if (e.level == 1) {
+            result.level_1.push_back(ref_info(*rtree.referral_map.find(e.account_id)->second, e.account_id(_db).name));
+        }
+    }
+    return result;
+}
+
 Unit database_api::get_referrals(string account_name_or_id) {
    auto account = get_account_by_name(account_name_or_id);
    FC_ASSERT(account.valid(), "invalid account");
    return my->get_referrals(account);
 }
 Unit database_api_impl::get_referrals( optional<account_object> account ) const {
-    auto& d = _db;
-    const auto& idx = d.get_index_type<chain::account_index>();
-    auto asset = d.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
-    Unit start(account->get_id(), account->name, d.get_balance(account->id, asset->id).amount.value);
+    const auto& idx = _db.get_index_type<chain::account_index>();
+    auto asset = _db.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+    Unit start(account->get_id(), account->name, _db.get_balance(account->id, asset->id).amount.value);
     std::map<account_id_type, Unit*> search;
     search.emplace(account->get_id(), &start);
     idx.inspect_all_objects( [&](const chain::object& obj){
         const account_object& ref = static_cast<const chain::account_object&>(obj);
         auto searchIt = search.find(ref.referrer);
         if (searchIt != search.end()) {
-            auto balance = d.get_balance(ref.id, asset->id).amount.value;
+            auto balance = _db.get_balance(ref.id, asset->id).amount.value;
             auto nElem = Unit(ref.get_id(), ref.name, balance);
 //            auto smth = search.emplace(ref.get_id(), nElem);
             searchIt->second->referrals.push_back(nElem);
         }
-    });
+    });  
     return start;
+}
+
+vector<SimpleUnit> database_api::get_accounts_info(vector<string> account_names_or_ids)
+{
+   vector<optional<account_object>> accs;
+   accs.reserve(account_names_or_ids.size());
+   for( string str_name : account_names_or_ids )
+   {
+      accs.push_back(get_account_by_name(str_name));
+   }
+   return my->get_accounts_info(accs);
+}
+
+vector<SimpleUnit> database_api_impl::get_accounts_info(vector<optional<account_object>> accounts)
+{
+   vector<SimpleUnit> ret(accounts.size());
+   list<referral_tree> referral_set;
+
+   struct acc_index{
+      int n;
+      optional<account_object>* acc;
+      acc_index(int n, optional<account_object>* acc) : n(n), acc(acc){};
+   };
+
+   vector<acc_index> sorted_accounts;
+
+   for (int i = 0; i < accounts.size(); i++)
+   {
+      sorted_accounts.push_back(acc_index(i, &accounts[i]));
+   }
+
+   sort(sorted_accounts.begin(), sorted_accounts.end(), [](const acc_index & a, const acc_index & b) -> bool
+         {
+            if (a.acc->valid() && b.acc->valid())
+            {
+               return (**(a.acc)).id < (**(b.acc)).id;
+            }
+            return a.acc->valid() < b.acc->valid();
+         });
+
+   for (acc_index idx : sorted_accounts)
+   {
+      if (!idx.acc)
+      {
+         continue;
+      }
+      account_object acc_obj = **(idx.acc);
+      SimpleUnit ret_unit;
+      bool found = false;
+      for (referral_tree ref_tree : referral_set)
+      {
+         auto it = ref_tree.referral_map.find(acc_obj.id);
+         if (it != ref_tree.referral_map.end())
+         {
+            leaf_info info = *it->second;
+
+            ret_unit.balance = info.balance;
+            ret_unit.id = info.account_id;
+            ret_unit.name = acc_obj.name;
+            ret_unit.rank = info.rank;
+            ret[idx.n] = ret_unit;
+            found = true;
+            break;
+         }
+      }
+      if (found) continue;
+      const auto& db_idx = _db.get_index_type<chain::account_index>();
+      auto asset = _db.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+      auto& bal_idx = _db.get_index_type<account_balance_index>();
+      referral_set.push_back(referral_tree( db_idx, bal_idx, asset->id, acc_obj.get_id() ));
+      referral_set.back().form();
+      referral_set.back().scan();
+      ret_unit.balance =      referral_set.back().root.node->data.balance;
+      ret_unit.id =           referral_set.back().root.node->data.account_id;
+      ret_unit.name =         acc_obj.name;
+      ret_unit.rank =         referral_set.back().root.node->data.rank;
+      ret[idx.n] = ret_unit;
+
+   }
+
+   sorted_accounts.clear();
+   return ret;
+}
+
+fc::variant_object database_api::get_user_count_by_ranks() 
+{
+   return my->get_user_count_by_ranks();
+}
+
+fc::variant_object database_api_impl::get_user_count_by_ranks() const
+{
+   std::map<string, uint64_t> mapres;    
+   mapres.emplace("A", 0);
+   mapres.emplace("B", 0);
+   mapres.emplace("C", 0);
+   mapres.emplace("D", 0);
+   mapres.emplace("E", 0);
+   mapres.emplace("F", 0);
+   mapres.emplace("G", 0);
+   const auto& idx = _db.get_index_type<chain::account_index>();
+   auto asset = _db.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+   auto& bal_idx = _db.get_index_type<account_balance_index>();
+   referral_tree rtree( idx, bal_idx, asset->id );
+   rtree.form();
+   auto refbonuses = rtree.scan();
+   for (auto& elem: rtree.tree_data) {
+      if (!elem.rank.empty())
+         mapres[elem.rank]++;
+   }
+   fc::mutable_variant_object result;
+   for (auto& e: mapres) {
+      result[e.first] = e.second;
+   }
+   return result;
+}
+// get_user_count_with_balances ["1970-01-01T00:00:00", "1970-01-01T00:00:00"]
+int64_t database_api::get_user_count_with_balances(std::vector<fc::time_point_sec> dates) 
+{
+   fc::time_point_sec start, end;
+   if (dates.size() == 1) {
+      start = dates[0];
+   } else if (dates.size() == 2) {
+      start = dates[0];
+      end = dates[1];
+      if (start > end) std::swap(start, end);
+   }
+   return my->get_user_count_with_balances(start, end);
+}
+
+int64_t database_api_impl::get_user_count_with_balances(fc::time_point_sec start, fc::time_point_sec end) const 
+{
+   const auto& idx = _db.get_index_type<chain::account_index>().indices().get<by_id>();
+   auto asset = _db.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+   int64_t users_count = 0;
+   if (start == fc::time_point_sec() && end == fc::time_point_sec()) {
+      for (auto account = ++idx.begin(); account != idx.end(); account++) {
+         auto balance = _db.get_balance(account->id, asset->id).amount.value;
+         if (balance < 1) continue;
+         users_count++;
+      }
+   } else {
+      if (end == fc::time_point_sec())
+         end = fc::time_point::now();
+      for (auto account = ++idx.begin(); account != idx.end(); account++) {
+         auto balance = _db.get_balance(account->id, asset->id).amount.value;
+         if (balance < 1) continue;
+
+         const auto& stats = account->statistics(_db);
+         const account_transaction_history_object* node = &stats.most_recent_op(_db);
+         uint32_t ops_count = stats.total_ops;
+         while (true) {
+            if (node->next == account_transaction_history_id_type()) break;
+            node = &node->next(_db);
+         }
+         auto& hist = node->operation_id(_db);
+         if (hist.op.which() == 5) { // account_create_operation 
+            auto op = hist.op.get<account_create_operation>();
+            fc::time_point_sec create_time = _db.fetch_block_by_number(hist.block_num)->timestamp;
+            if (create_time >= start && create_time <= end) {
+               users_count++;
+            }
+         }
+      }
+   }
+   return users_count;
 }
 
 } } // graphene::app

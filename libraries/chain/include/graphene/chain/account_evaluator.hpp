@@ -69,4 +69,16 @@ public:
    const account_object* listed_account;
 };
 
+class account_restrict_evaluator : public evaluator<account_restrict_evaluator>
+{
+public:
+   typedef account_restrict_operation operation_type;
+
+   void_result do_evaluate( const account_restrict_operation& o);
+   object_id_type do_apply( const account_restrict_operation& o);
+
+   
+   const restricted_account_object* restricted_account = nullptr;
+};
+
 } } // graphene::chain

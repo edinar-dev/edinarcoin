@@ -54,6 +54,19 @@ void_result transfer_evaluator::do_evaluate( const transfer_operation& op )
          ("asset",op.amount.asset_id)
          );
 
+      GRAPHENE_ASSERT(
+         not_restricted_account( d, from_account, directionality_type::payer),
+         transfer_from_account_restricted,
+         "'from' account ${from} is restricted by committee",
+         ("from",op.from)
+         );
+      GRAPHENE_ASSERT(
+         not_restricted_account( d, to_account, directionality_type::receiver),
+         transfer_to_account_restricted,
+         "'to' account ${to} is restricted by committee",
+         ("to",op.to)
+         );
+
       if( asset_type.is_transfer_restricted() )
       {
          GRAPHENE_ASSERT(
@@ -101,6 +114,9 @@ void_result override_transfer_evaluator::do_evaluate( const override_transfer_op
 
    FC_ASSERT( is_authorized_asset( d, to_account, asset_type ) );
    FC_ASSERT( is_authorized_asset( d, from_account, asset_type ) );
+
+   FC_ASSERT( not_restricted_account( d, from_account, directionality_type::payer) );
+   FC_ASSERT( not_restricted_account( d, to_account, directionality_type::receiver) );
 
    if( d.head_block_time() <= HARDFORK_419_TIME )
    {

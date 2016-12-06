@@ -26,6 +26,7 @@
 #include <graphene/db/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <fc/uint128.hpp>
+#include <iostream>
 
 namespace graphene { namespace chain {
    class database;
@@ -110,27 +111,85 @@ namespace graphene { namespace chain {
          void  adjust_balance(const asset& delta);
    };
 
-   struct Unit {
-       Unit() {
-           this->name = "";
-           this->balance = 0;
-       }
-       Unit(account_id_type id, std::string name, long long balance) {
-           this->id = id;
-           this->name = name;
-           this->balance = balance;
-       }
-       account_id_type id;
-       std::string name;
-       uint64_t balance;
-       std::vector<Unit> referrals;
+   struct SimpleUnit
+   {
+      std::string rank = "";
+      account_id_type id;
+      std::string name;
+      uint64_t balance;
+
+      SimpleUnit() : name(""), balance(0) {}
+      SimpleUnit(account_id_type id, std::string name, uint64_t balance) :
+         id(id), name(name), balance(balance) {}
    };
+
+   struct Unit : SimpleUnit {
+       Unit() : SimpleUnit(account_id_type(), "", 0), level(0) {}
+       Unit(account_id_type id, std::string name, uint64_t balance, int level) :
+          SimpleUnit(id, name, balance), level(level) {}
+       Unit(account_id_type id, std::string name, uint64_t balance) :
+          SimpleUnit(id, name, balance), level(0) {}
+       std::vector<Unit> referrals;
+       int level;
+   };
+
+   struct ref_info {
+      ref_info() {}
+      ref_info( account_id_type acc_id, string name, uint64_t bal,
+                uint32_t level_1_partners, uint64_t level_1_sum,
+                uint32_t level_2_partners,
+                uint32_t all_partners, uint64_t all_sum,
+                double bonus_percent) :
+        id(acc_id), name(name), balance(bal),
+        level_1_partners(level_1_partners), level_1_sum(level_1_sum),
+        level_2_partners(level_2_partners),
+        all_partners(all_partners), all_sum(all_sum),
+        bonus_percent(bonus_percent) {}
+      ref_info( account_id_type acc_id, string name, uint64_t bal )
+               :        id(acc_id), name(name), balance(bal) {}
+      ref_info( leaf_info leaf, string _name )
+      {
+        id                 = leaf.account_id;
+        name               = _name;
+        balance            = leaf.balance;
+        level_1_partners   = leaf.level_1_partners;
+        level_1_sum        = leaf.level_1_sum;
+        level_2_partners   = leaf.level_2_partners;
+        all_partners       = leaf.all_partners;
+        all_sum            = leaf.all_sum;
+        bonus_percent      = leaf.bonus_percent;
+        rank               = leaf.rank;
+      }
+
+      account_id_type id;
+      string name;
+      string rank;
+      uint64_t balance = 0;
+      uint32_t level_1_partners = 0;
+      uint64_t level_1_sum = 0;
+      uint32_t level_2_partners = 0;
+      uint32_t all_partners = 0;
+      uint64_t all_sum = 0;
+      double bonus_percent = 0;
+      vector<ref_info> level_1;
+   };
+
+    class restricted_account_object : public graphene::db::abstract_object<restricted_account_object>
+    {
+        public:
+            static const uint8_t space_id = protocol_ids;
+            static const uint8_t type_id  = restricted_account_object_type;
+
+            account_id_type account;
+            optional<uint8_t> restriction_type = 0x6;
+    };
+
    /**
     * @brief This class represents an account on the object graph
     * @ingroup object
     * @ingroup protocol
     *
-    * Accounts are the primary unit of authority on the graphene system. Users must have an account in order to use
+    * Accounts are the primary ref_info of authority on the graphene system. Users must have an account in order to use
     * assets, trade in the markets, vote for committee_members, etc.
     */
    class account_object : public graphene::db::abstract_object<account_object>
@@ -379,9 +438,35 @@ namespace graphene { namespace chain {
     */
    typedef generic_index<account_object, account_multi_index_type> account_index;
 
-}}
+   struct by_acc_id{};
 
-FC_REFLECT( graphene::chain::Unit, (id)(name)(balance)(referrals) );
+   /**
+    * @ingroup object_index
+    */
+   typedef multi_index_container<
+      restricted_account_object,
+      indexed_by<
+         ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag<by_acc_id>, member< restricted_account_object, account_id_type, &restricted_account_object::account > >
+      >
+   > restricted_account_index_type;
+
+   /**
+    * @ingroup object_index
+    */
+   typedef generic_index<restricted_account_object, restricted_account_index_type> restricted_account_index;
+
+}}
+FC_REFLECT( graphene::chain::SimpleUnit, (rank)(id)(name)(balance));
+FC_REFLECT_DERIVED( graphene::chain::Unit, (graphene::chain::SimpleUnit), (referrals)(level));
+FC_REFLECT( graphene::chain::ref_info,
+            (level_1)(id)(name)(balance)(level_1_partners)(level_1_sum)(level_2_partners)
+            (all_partners)(all_sum)(bonus_percent)(rank) )
+
+FC_REFLECT_DERIVED( graphene::chain::restricted_account_object,
+            (graphene::db::object),
+            (account)(restriction_type))
+
 FC_REFLECT_DERIVED( graphene::chain::account_object,
                     (graphene::db::object),
                     (membership_expiration_date)(registrar)(referrer)(lifetime_referrer)

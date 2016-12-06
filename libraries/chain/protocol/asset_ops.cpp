@@ -161,10 +161,34 @@ void asset_issue_operation::validate()const
    FC_ASSERT( asset_to_issue.asset_id != asset_id_type(0) );
 }
 
+void bonus_operation::validate()const
+{
+   FC_ASSERT( asset_to_issue != asset_id_type(0) );
+}
+void daily_issue_operation::validate()const
+{
+   FC_ASSERT( asset_to_issue.amount.value <= GRAPHENE_MAX_SHARE_SUPPLY );
+   FC_ASSERT( asset_to_issue.amount.value > 0 );
+   FC_ASSERT( asset_to_issue.asset_id != asset_id_type(0) );
+}
+void referral_issue_operation::validate()const
+{
+   FC_ASSERT( asset_to_issue.amount.value <= GRAPHENE_MAX_SHARE_SUPPLY );
+   FC_ASSERT( asset_to_issue.amount.value > 0 );
+   FC_ASSERT( asset_to_issue.asset_id != asset_id_type(0) );
+}
+
 void asset_fund_fee_pool_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( fee.asset_id == asset_id_type() );
+   FC_ASSERT( amount > 0 );
+}
+
+void edc_asset_fund_fee_pool_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( fee.asset_id == asset_id_type(1) ); // should be EDC
    FC_ASSERT( amount > 0 );
 }
 

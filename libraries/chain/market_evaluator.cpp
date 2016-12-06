@@ -55,6 +55,8 @@ void_result limit_order_create_evaluator::do_evaluate(const limit_order_create_o
    FC_ASSERT( is_authorized_asset( d, *_seller, *_sell_asset ) );
    FC_ASSERT( is_authorized_asset( d, *_seller, *_receive_asset ) );
 
+   FC_ASSERT( not_restricted_account( d, *_seller, directionality_type::payer | directionality_type::receiver) );
+
    FC_ASSERT( d.get_balance( *_seller, *_sell_asset ) >= op.amount_to_sell, "insufficient balance",
               ("balance",d.get_balance(*_seller,*_sell_asset))("amount_to_sell",op.amount_to_sell) );
 

@@ -335,11 +335,7 @@ class wallet_api
        * @returns a list of \c operation_history_objects
        */
       vector<operation_detail>  get_account_history(string name, int limit)const;
-
-      vector<operation_detail>  get_account_history_part(account_id_type account,
-                                                         operation_history_id_type stop = operation_history_id_type(),
-                                                         int limit = 100,
-                                                         operation_history_id_type start = operation_history_id_type())const;
+      vector<operation_detail>  get_account_operation_history(string name, int op_type, int limit)const;
 
 
       vector<bucket_object>             get_market_history(string symbol, string symbol2, uint32_t bucket)const;
@@ -372,7 +368,12 @@ class wallet_api
       account_object                    get_account(string account_name_or_id) const;
     
       Unit                              get_referrals(string account_name_or_id) const;
+      ref_info                          get_referrals_by_id(string account_name_or_id) const;
+      vector<SimpleUnit>                get_accounts_info(vector<string> account_names_or_ids) const;
 
+      fc::variant_object        get_user_count_by_ranks() const;
+
+      int64_t get_user_count_with_balances(std::vector<fc::time_point_sec> dates = std::vector<fc::time_point_sec>());
       /** Returns information about the given asset.
        * @param asset_name_or_id the symbol or id of the asset in question
        * @returns the information about the asset stored in the block chain
@@ -714,6 +715,24 @@ class wallet_api
                                   string memo,
                                   bool broadcast = false);
 
+      /** Transfer an amount from one account to another with a given symbol */
+      signed_transaction transfer_with_fee_symbol( string from,
+                                                   string to,
+                                                   string amount,
+                                                   string asset_symbol,
+                                                   string memo,
+                                                   string fee_symbol,
+                                                   bool broadcast = false);
+      pair<transaction_id_type,signed_transaction> transfer_with_fee_symbol2( string from,
+                                                                              string to,
+                                                                              string amount,
+                                                                              string asset_symbol,
+                                                                              string memo,
+                                                                              string fee_symbol,
+                                                                              bool broadcast = false) {
+         auto trx = transfer_with_fee_symbol( from, to, amount, asset_symbol, memo, fee_symbol, true );
+         return std::make_pair(trx.id(),trx);
+      }
       /**
        *  This method works just like transfer, except it always broadcasts and
        *  returns the transaction ID along with the signed transaction.
@@ -1064,6 +1083,11 @@ class wallet_api
       signed_transaction fund_asset_fee_pool(string from,
                                              string symbol,
                                              string amount,
+                                             bool broadcast = false);
+
+      signed_transaction edc_fund_asset_fee_pool(string from,
+                                             string symbol,
+                                             share_type amount,
                                              bool broadcast = false);
 
       /** Burns the given user-issued asset.
@@ -1456,6 +1480,9 @@ class wallet_api
          
       order_book get_order_book( const string& base, const string& quote, unsigned limit = 50);
 
+      signed_transaction propose_account_restriction(const string& initiator, const string& target, account_restrict_operation::account_action action,
+                                                    fc::time_point_sec expiration_time, bool broadcast = true);
+
       void dbg_make_uia(string creator, string symbol);
       void dbg_make_mia(string creator, string symbol);
       void dbg_push_blocks( std::string src_filename, uint32_t count );
@@ -1582,6 +1609,8 @@ FC_API( graphene::wallet::wallet_api,
         (cancel_order)
         (transfer)
         (transfer2)
+        (transfer_with_fee_symbol)
+        (transfer_with_fee_symbol2)
         (get_transaction_id)
         (create_asset)
         (update_asset)
@@ -1592,10 +1621,12 @@ FC_API( graphene::wallet::wallet_api,
         (get_asset)
         (get_bitasset_data)
         (fund_asset_fee_pool)
+        (edc_fund_asset_fee_pool)
         (reserve_asset)
         (global_settle_asset)
         (settle_asset)
         (whitelist_account)
+        (propose_account_restriction)
         (create_committee_member)
         (get_witness)
         (get_committee_member)
@@ -1613,11 +1644,15 @@ FC_API( graphene::wallet::wallet_api,
         (set_desired_witness_and_committee_member_count)
         (get_account)
         (get_referrals)
+        (get_referrals_by_id)
+        (get_accounts_info)
+        (get_user_count_by_ranks)
+        (get_user_count_with_balances)
         (get_account_id)
         (get_block)
         (get_account_count)
         (get_account_history)
-        (get_account_history_part)
+        (get_account_operation_history)
         (get_market_history)
         (get_global_properties)
         (get_dynamic_global_properties)

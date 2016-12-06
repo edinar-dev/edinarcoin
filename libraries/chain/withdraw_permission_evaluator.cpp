@@ -75,6 +75,9 @@ void_result withdraw_permission_claim_evaluator::do_evaluate(const withdraw_perm
    FC_ASSERT( is_authorized_asset( d, to, _asset ) );
    FC_ASSERT( is_authorized_asset( d, from, _asset ) );
 
+   FC_ASSERT( not_restricted_account( d, from, directionality_type::payer) );
+   FC_ASSERT( not_restricted_account( d, to, directionality_type::receiver) );
+
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
 

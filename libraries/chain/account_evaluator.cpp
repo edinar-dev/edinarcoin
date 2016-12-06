@@ -406,4 +406,48 @@ void_result account_upgrade_evaluator::do_apply(const account_upgrade_evaluator:
    return {};
 } FC_RETHROW_EXCEPTIONS( error, "Unable to upgrade account '${a}'", ("a",o.account_to_upgrade(db()).name) ) }
 
+void_result account_restrict_evaluator::do_evaluate(const account_restrict_operation& o)
+{ try {
+    database& d = db();
+
+    const auto& idx = d.get_index_type<restricted_account_index>().indices().get<by_acc_id>();
+    auto itr = idx.find(o.target);
+
+    FC_ASSERT( (o.action & o.restore) && (itr != idx.end()) || (o.action & ~o.restore));
+
+    if (itr != idx.end())
+        restricted_account = &*itr;
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+object_id_type account_restrict_evaluator::do_apply(const account_restrict_operation& o)
+{ try {
+   database& d = db();
+
+   if (o.action & o.restore)
+   {
+      d.remove( *restricted_account );
+   } else
+   {
+      if (restricted_account == nullptr)
+      {
+         const auto& new_restr_object =
+         d.create< restricted_account_object >( [&]( restricted_account_object& rao )
+         {
+            rao.account = o.target;
+            rao.restriction_type = o.action;
+         } );
+         return new_restr_object.id;
+      }
+
+      d.modify<restricted_account_object> ( *restricted_account,[&]( restricted_account_object& rao)
+      {
+         rao.restriction_type = o.action;
+      } );
+   }
+
+   return object_id_type();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
 } } // graphene::chain

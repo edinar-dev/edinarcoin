@@ -22,6 +22,9 @@
  * THE SOFTWARE.
  */
 #pragma once
+#include <map>
+#include <typeindex>
+#include <typeinfo>
 
 namespace graphene { namespace chain {
 
@@ -31,9 +34,43 @@ class database;
 
 namespace detail {
 
+//static const std::map<std::type_index, uint8_t> restrictions_map{
+//   std::pair<std::type_index, uint8_t>(typeid(transfer_operation), account_restrict_operation::restrict |
+//                                                                   account_restrict_operation::restrict_in_only |
+//                                                                   account_restrict_operation::restrict_out_only),
+
+//};
+
 bool _is_authorized_asset(const database& d, const account_object& acct, const asset_object& asset_obj);
 
 }
+
+enum directionality_type
+{
+   receiver = 0x2,
+   payer = 0x4,
+};
+
+
+inline bool not_restricted_account(const database& d, const account_object& acct, uint8_t type)
+{
+   const auto& idx = d.get_index_type<restricted_account_index>().indices().get<by_acc_id>();
+
+   auto itr = idx.find(acct.id);
+
+   if(itr == idx.end())
+   {
+      return true;
+   }
+
+   if (type & *(*itr).restriction_type)
+   {
+      return false;
+   }
+
+   return true;
+}
+
 
 /**
  * @return true if the account is whitelisted and not blacklisted to transact in the provided asset; false
@@ -42,6 +79,8 @@ bool _is_authorized_asset(const database& d, const account_object& acct, const a
 
 inline bool is_authorized_asset(const database& d, const account_object& acct, const asset_object& asset_obj)
 {
+
+
    bool fast_check = !(asset_obj.options.flags & white_list);
    fast_check &= !(acct.allowed_assets.valid());
 

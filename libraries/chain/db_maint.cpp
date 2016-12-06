@@ -45,7 +45,6 @@
 #include <graphene/chain/vote_count.hpp>
 #include <graphene/chain/witness_object.hpp>
 #include <graphene/chain/worker_object.hpp>
-
 namespace graphene { namespace chain {
 
 template<class Index>
@@ -858,7 +857,10 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
          // So this k suffices.
          //
          auto y = (head_block_time() - next_maintenance_time).to_seconds() / maintenance_interval;
-         next_maintenance_time += (y+1) * maintenance_interval;
+         double coef = 1;
+         if (head_block_time() == HARDFORK_616_MAINTENANCE_CHANGE_TIME) // TODO: change before launch 
+            coef = 0.375;
+         next_maintenance_time += (y+coef) * maintenance_interval;
       }
    }
 
@@ -879,6 +881,49 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    // process_budget needs to run at the bottom because
    //   it needs to know the next_maintenance_time
    process_budget();
+   if (head_block_time() > HARDFORK_616_TIME) // TODO: change before launch
+      issue_bonuses();
+}
+
+void database::issue_bonuses() {
+   auto start = fc::time_point::now();
+   const auto& idx = get_index_type<chain::account_index>();
+   const auto asset= get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");   
+   const auto& bal_idx = get_index_type<account_balance_index>();
+   transaction_evaluation_state eval(this);
+   referral_tree rtree( idx, bal_idx, asset->id );
+   rtree.form();
+   auto ops = rtree.scan();
+   for(auto e : ops) {
+      chain::referral_issue_operation op;
+      op.issuer = asset->issuer;
+      op.asset_to_issue = asset->amount(e.quantity);
+      op.issue_to_account = e.to_account_id;
+      op.history = e.history;
+      op.rank = e.rank;
+      try {
+         apply_operation(eval, op);
+      } catch (fc::assert_exception& e) {
+         std::cout << "\t\t\t\t skip referral issue " << e.what() << std::endl;
+      }
+   }
+   idx.inspect_all_objects( [this,&asset,&eval](const chain::object& obj){
+      const chain::account_object& account = static_cast<const chain::account_object&>(obj);
+
+      auto balance = get_balance(account.get_id(), asset->get_id()).amount;
+      if (balance.value == 0) return;
+      uint64_t quantity = 0.0065 * balance.value;
+      if (quantity < 1) return;
+      chain::daily_issue_operation op;
+      op.issuer = asset->issuer;
+      op.asset_to_issue = asset->amount(quantity);
+      op.issue_to_account = account.id;
+      try {
+         apply_operation(eval, op);
+      } catch (fc::assert_exception& e) {
+         std::cout << "\t\t\t\t skip daily issue for " << account.name << " " << e.what() << std::endl;
+      }
+   });
 }
 
 } }

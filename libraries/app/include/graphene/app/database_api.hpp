@@ -238,7 +238,23 @@ class database_api
        * @brief Get list of refferers of account
        */
       Unit get_referrals( string account_name_or_id );
-    
+      ref_info get_referrals_by_id( string account_name_or_id );
+      vector<SimpleUnit> get_accounts_info(vector<string> account_names_or_ids);
+      
+      /** 
+       *  @brief Get count of users in each rank
+       *  @return Map of ranks with cout of users
+       *  { "A": 31,
+       *    "B": 3123,
+       *    "C": 3,
+       *    "D": 32,
+       *    "E": 94,
+       *    "F": 321,
+       *    "G": 0  }
+       */
+      fc::variant_object get_user_count_by_ranks();
+
+      int64_t get_user_count_with_balances(std::vector<fc::time_point_sec> dates = std::vector<fc::time_point_sec>());
       /**
        * @brief Fetch all objects relevant to the specified accounts and subscribe to updates
        * @param callback Function to call with updates
@@ -610,6 +626,10 @@ FC_API(graphene::app::database_api,
    // Accounts
    (get_accounts)
    (get_referrals)
+   (get_referrals_by_id)
+   (get_accounts_info)
+   (get_user_count_by_ranks)
+   (get_user_count_with_balances)
    (get_full_accounts)
    (get_account_by_name)
    (get_account_references)

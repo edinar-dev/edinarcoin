@@ -29,8 +29,8 @@
 #include <graphene/chain/exceptions.hpp>
 #include <graphene/chain/hardfork.hpp>
 #include <graphene/chain/is_authorized_asset.hpp>
-
-#include <functional>
+#include <iostream>
+#include <graphene/chain/tree.hpp>
 
 namespace graphene { namespace chain {
 
@@ -80,8 +80,6 @@ void_result asset_create_evaluator::do_evaluate( const asset_create_operation& o
       }
    }
 
-   core_fee_paid -= core_fee_paid.value/2;
-
    if( op.bitasset_opts )
    {
       const asset_object& backing = op.bitasset_opts->short_backing_asset(d);
@@ -110,6 +108,7 @@ void_result asset_create_evaluator::do_evaluate( const asset_create_operation& o
 
 object_id_type asset_create_evaluator::do_apply( const asset_create_operation& op )
 { try {
+   core_fee_paid -= core_fee_paid.value/2;
    const asset_dynamic_data_object& dyn_asset =
       db().create<asset_dynamic_data_object>( [&]( asset_dynamic_data_object& a ) {
          a.current_supply = 0;
@@ -154,6 +153,7 @@ void_result asset_issue_evaluator::do_evaluate( const asset_issue_operation& o )
 
    to_account = &o.issue_to_account(d);
    FC_ASSERT( is_authorized_asset( d, *to_account, a ) );
+   FC_ASSERT( not_restricted_account( d, *to_account, directionality_type::receiver) );
 
    asset_dyn_data = &a.dynamic_asset_data_id(d);
    FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.options.max_supply );
@@ -172,6 +172,122 @@ void_result asset_issue_evaluator::do_apply( const asset_issue_operation& o )
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
+void_result bonus_evaluator::do_evaluate( const bonus_operation& o )
+{ try {
+   const asset_object& a = o.asset_to_issue(db());
+   FC_ASSERT( o.issuer == a.issuer );
+   FC_ASSERT( !a.is_market_issued(), "Cannot manually issue a market-issued asset." );
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result bonus_evaluator::do_apply( const bonus_operation& o )
+{ try {
+
+   const auto& idx = db().get_index_type<chain::account_index>();
+   const auto asset =db().get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+   transaction_evaluation_state eval(&db());
+   idx.inspect_all_objects( [this,&asset,&eval](const chain::object& obj){
+      const chain::account_object& account = static_cast<const chain::account_object&>(obj);
+
+      auto balance = db().get_balance(account.get_id(), asset->get_id()).amount;
+      if (balance.value == 0) return;
+      uint64_t quantity = 0.0065 * balance.value;
+
+      chain::daily_issue_operation op;
+      op.issuer = asset->issuer;
+      op.asset_to_issue = asset->amount(quantity);
+      op.issue_to_account = account.id;
+      db().apply_operation(eval, op);
+   });
+   auto& bal_idx = db().get_index_type<account_balance_index>();
+   referral_tree rtree( idx, bal_idx, asset->id );
+   rtree.form();
+   auto ops = rtree.scan();
+   for(auto e : ops) {
+      chain::referral_issue_operation op;
+      op.issuer = asset->issuer;
+      op.asset_to_issue = asset->amount(e.quantity);
+      op.issue_to_account = e.to_account_id;
+      op.history = e.history;
+      op.rank = e.rank;
+      transaction_evaluation_state eval(&db());
+      db().apply_operation(eval, op);
+   }
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+
+void_result referral_issue_evaluator::do_evaluate( const referral_issue_operation& o )
+{ try {
+   const database& d = db();
+
+   const asset_object& a = o.asset_to_issue.asset_id(d);
+   FC_ASSERT( o.issuer == a.issuer );
+   FC_ASSERT( !a.is_market_issued(), "Cannot manually issue a market-issued asset." );
+
+   to_account = &o.issue_to_account(d);
+   FC_ASSERT( is_authorized_asset( d, *to_account, a ) );
+   FC_ASSERT( not_restricted_account( d, *to_account, directionality_type::receiver) );
+   
+
+   asset_dyn_data = &a.dynamic_asset_data_id(d);
+   account_object issuer = o.issuer(d);
+   account_object alpha = account_id_type(18)(d);
+   FC_ASSERT(alpha.blacklisted_accounts.find(o.issue_to_account) ==
+         alpha.blacklisted_accounts.end());
+   FC_ASSERT(issuer.blacklisted_accounts.find(o.issue_to_account) ==
+         issuer.blacklisted_accounts.end());
+   FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.options.max_supply );
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result referral_issue_evaluator::do_apply( const referral_issue_operation& o )
+{ try {
+   db().adjust_balance( o.issue_to_account, o.asset_to_issue );
+
+   db().modify( *asset_dyn_data, [&]( asset_dynamic_data_object& data ){
+        data.current_supply += o.asset_to_issue.amount;
+   });
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result daily_issue_evaluator::do_evaluate( const daily_issue_operation& o )
+{ try {
+   const database& d = db();
+
+   const asset_object& a = o.asset_to_issue.asset_id(d);
+   FC_ASSERT( o.issuer == a.issuer );
+   FC_ASSERT( !a.is_market_issued(), "Cannot manually issue a market-issued asset." );
+
+   to_account = &o.issue_to_account(d);
+   FC_ASSERT( is_authorized_asset( d, *to_account, a ) );
+   FC_ASSERT( not_restricted_account( d, *to_account, directionality_type::receiver) );
+
+   asset_dyn_data = &a.dynamic_asset_data_id(d);
+   account_object issuer = o.issuer(d);
+   account_object alpha = account_id_type(18)(d);
+   FC_ASSERT(alpha.blacklisted_accounts.find(o.issue_to_account) ==
+         alpha.blacklisted_accounts.end());
+   FC_ASSERT(issuer.blacklisted_accounts.find(o.issue_to_account) ==
+         issuer.blacklisted_accounts.end());
+   FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.options.max_supply );
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result daily_issue_evaluator::do_apply( const daily_issue_operation& o )
+{ try {
+   db().adjust_balance( o.issue_to_account, o.asset_to_issue );
+
+   db().modify( *asset_dyn_data, [&]( asset_dynamic_data_object& data ){
+        data.current_supply += o.asset_to_issue.amount;
+   });
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+
 void_result asset_reserve_evaluator::do_evaluate( const asset_reserve_operation& o )
 { try {
    const database& d = db();
@@ -186,6 +302,7 @@ void_result asset_reserve_evaluator::do_evaluate( const asset_reserve_operation&
 
    from_account = &o.payer(d);
    FC_ASSERT( is_authorized_asset( d, *from_account, a ) );
+   FC_ASSERT( not_restricted_account( d, *from_account, directionality_type::payer) );
 
    asset_dyn_data = &a.dynamic_asset_data_id(d);
    FC_ASSERT( (asset_dyn_data->current_supply - o.amount_to_reserve.amount) >= 0 );
@@ -221,6 +338,41 @@ void_result asset_fund_fee_pool_evaluator::do_apply(const asset_fund_fee_pool_op
 
    db().modify( *asset_dyn_data, [&]( asset_dynamic_data_object& data ) {
       data.fee_pool += o.amount;
+   });
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result edc_asset_fund_fee_pool_evaluator::do_evaluate(const edc_asset_fund_fee_pool_operation& o)
+{ try {
+   database& d = db();
+
+   const asset_object& a = o.asset_id(d);
+   asset_dyn_data = &a.dynamic_asset_data_id(d);
+
+   edc_paid = asset(o.amount, asset_id_type(1));
+
+   const asset_object& amount_object = edc_paid.asset_id(db());
+   amount_asset_data = &amount_object.dynamic_asset_data_id(db());
+   core_paid = edc_paid * amount_object.options.core_exchange_rate;
+
+   FC_ASSERT( core_paid.asset_id == asset_id_type() );
+   FC_ASSERT( core_paid.amount < amount_asset_data->fee_pool);
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result edc_asset_fund_fee_pool_evaluator::do_apply(const edc_asset_fund_fee_pool_operation& o)
+{ try {
+   db().adjust_balance(o.from_account, -edc_paid);
+
+   db().modify( *amount_asset_data, [&](asset_dynamic_data_object& data) {
+      data.accumulated_fees += edc_paid.amount;
+      data.fee_pool -= core_paid.amount;
+   });
+
+   db().modify( *asset_dyn_data, [&]( asset_dynamic_data_object& data ) {
+      data.fee_pool += core_paid.amount;
    });
 
    return void_result();

@@ -75,6 +75,11 @@ struct get_impacted_account_visitor
    {
       _impacted.insert( op.account_to_list );
    }
+   
+   void operator()( const account_restrict_operation& op )
+   {
+      _impacted.insert( op.target );
+   }
 
    void operator()( const account_upgrade_operation& op ) {}
    void operator()( const account_transfer_operation& op )
@@ -96,9 +101,20 @@ struct get_impacted_account_visitor
    {
       _impacted.insert( op.issue_to_account );
    }
+   void operator()( const bonus_operation& op ) {}
+
+   void operator()( const referral_issue_operation& op )   
+   {
+      _impacted.insert( op.issue_to_account );
+   }
+   void operator()( const daily_issue_operation& op ) 
+   {
+      _impacted.insert( op.issue_to_account );
+   }
 
    void operator()( const asset_reserve_operation& op ) {}
    void operator()( const asset_fund_fee_pool_operation& op ) {}
+   void operator()( const edc_asset_fund_fee_pool_operation& op ) {}
    void operator()( const asset_settle_operation& op ) {}
    void operator()( const asset_global_settle_operation& op ) {}
    void operator()( const asset_publish_feed_operation& op ) {}

@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 #pragma once
-#include <graphene/chain/protocol/base.hpp>
-#include <graphene/chain/protocol/memo.hpp>
+
+#include <graphene/chain/protocol/referral_classes.hpp>
 
 namespace graphene { namespace chain { 
 
@@ -253,6 +253,20 @@ namespace graphene { namespace chain {
       void       validate()const;
    };
 
+   struct edc_asset_fund_fee_pool_operation : public base_operation
+   {
+      struct fee_parameters_type { uint64_t fee =  GRAPHENE_BLOCKCHAIN_PRECISION; };
+
+      asset           fee;  ///< edc asset
+      account_id_type from_account;
+      asset_id_type   asset_id;
+      share_type      amount;  ///< edc asset
+      extensions_type extensions;
+
+      account_id_type fee_payer()const { return from_account; }
+      void       validate()const;
+   };
+
    /**
     * @brief Update options common to all assets
     * @ingroup operations
@@ -406,6 +420,66 @@ namespace graphene { namespace chain {
    };
 
    /**
+    * @ingroup operations
+    */
+   struct bonus_operation : public base_operation
+   {
+      struct fee_parameters_type {
+         uint64_t fee = 0;
+         uint32_t price_per_kbyte = 0;
+      };
+
+      asset            fee;
+      account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
+      asset_id_type    asset_to_issue;
+      
+      extensions_type      extensions;
+
+      account_id_type fee_payer()const { return issuer; }
+      void            validate()const;
+      share_type      calculate_fee(const fee_parameters_type& k)const{ return 0; };
+   };
+
+   struct daily_issue_operation : public base_operation
+   {
+      struct fee_parameters_type {
+         uint64_t fee = 0;
+         uint32_t price_per_kbyte = 0;
+      };
+
+      asset            fee;
+      account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
+      asset            asset_to_issue;
+      account_id_type  issue_to_account;
+
+      extensions_type      extensions;
+
+      account_id_type fee_payer()const { return issuer; }
+      void            validate()const;
+      share_type      calculate_fee(const fee_parameters_type& k)const{ return 0; };
+   };
+
+   struct referral_issue_operation : public base_operation
+   {
+      struct fee_parameters_type {
+         uint64_t fee = 0;
+         uint32_t price_per_kbyte = 0;
+      };
+
+      asset            fee;
+      account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
+      asset            asset_to_issue;
+      account_id_type  issue_to_account;
+      string            rank;
+      extensions_type  extensions;
+      vector<child_balance>      history;
+
+      account_id_type fee_payer()const { return issuer; }
+      void            validate()const;
+      share_type      calculate_fee(const fee_parameters_type& k)const{ return 0; };
+   };
+
+   /**
     * @brief used to take an asset out of circulation, returning to the issuer
     * @ingroup operations
     *
@@ -478,11 +552,15 @@ FC_REFLECT( graphene::chain::asset_global_settle_operation::fee_parameters_type,
 FC_REFLECT( graphene::chain::asset_settle_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::asset_settle_cancel_operation::fee_parameters_type, )
 FC_REFLECT( graphene::chain::asset_fund_fee_pool_operation::fee_parameters_type, (fee) )
+FC_REFLECT( graphene::chain::edc_asset_fund_fee_pool_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::asset_update_operation::fee_parameters_type, (fee)(price_per_kbyte) )
 FC_REFLECT( graphene::chain::asset_update_bitasset_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::asset_update_feed_producers_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::asset_publish_feed_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::asset_issue_operation::fee_parameters_type, (fee)(price_per_kbyte) )
+FC_REFLECT( graphene::chain::bonus_operation::fee_parameters_type, (fee)(price_per_kbyte) )
+FC_REFLECT( graphene::chain::daily_issue_operation::fee_parameters_type, (fee)(price_per_kbyte) )
+FC_REFLECT( graphene::chain::referral_issue_operation::fee_parameters_type, (fee)(price_per_kbyte) )
 FC_REFLECT( graphene::chain::asset_reserve_operation::fee_parameters_type, (fee) )
 
 
@@ -524,4 +602,12 @@ FC_REFLECT( graphene::chain::asset_issue_operation,
 FC_REFLECT( graphene::chain::asset_reserve_operation,
             (fee)(payer)(amount_to_reserve)(extensions) )
 
-FC_REFLECT( graphene::chain::asset_fund_fee_pool_operation, (fee)(from_account)(asset_id)(amount)(extensions) );
+FC_REFLECT( graphene::chain::asset_fund_fee_pool_operation, (fee)(from_account)(asset_id)(amount)(extensions) )
+FC_REFLECT( graphene::chain::edc_asset_fund_fee_pool_operation, (fee)(from_account)(asset_id)(amount)(extensions) )
+
+FC_REFLECT( graphene::chain::bonus_operation,
+            (fee)(issuer)(asset_to_issue)(extensions) )    
+FC_REFLECT( graphene::chain::daily_issue_operation,
+            (fee)(issuer)(asset_to_issue)(issue_to_account)(extensions) )   
+FC_REFLECT( graphene::chain::referral_issue_operation,
+            (fee)(issuer)(rank)(asset_to_issue)(issue_to_account)(history)(extensions) )         

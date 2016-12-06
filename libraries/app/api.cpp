@@ -125,7 +125,7 @@ namespace graphene { namespace app {
                 auto block_num = b.block_num();
                 auto& callback = _callbacks.find(id)->second;
                  callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, trx}) );
-                 // TODO:kstdl
+                 // TODO: 
 //                fc::async( [capture_this,this,id,block_num,trx_num,trx,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, trx}) ); } );
              }
           }
@@ -420,7 +420,7 @@ namespace graphene { namespace app {
        
        return result;
     }
-    
+
     vector<operation_history_object> history_api::get_relative_account_history( account_id_type account, 
                                                                                 uint32_t stop, 
                                                                                 unsigned limit, 
@@ -447,6 +447,31 @@ namespace graphene { namespace app {
        }
        
        return result;
+    }
+
+    vector<operation_history_object> history_api::get_account_operation_history( account_id_type account,
+                                                                                  unsigned operation_type,
+                                                                                  unsigned limit) const 
+    {
+      FC_ASSERT( _app.chain_database() );
+      const auto& db = *_app.chain_database();       
+      FC_ASSERT( limit <= 100 );
+      vector<operation_history_object> result;
+      const auto& stats = account(db).statistics(db);
+      if( stats.most_recent_op == account_transaction_history_id_type() ) return result;
+      const account_transaction_history_object* node = &stats.most_recent_op(db);
+      
+      while(node && result.size() < limit)
+      {
+        auto h = node->operation_id(db);
+        if (h.op.which() == operation_type)
+          result.push_back( node->operation_id(db) );
+        if( node->next == account_transaction_history_id_type() )
+          node = nullptr;
+        else node = &node->next(db);
+      }
+      
+      return result;
     }
 
     flat_set<uint32_t> history_api::get_market_history_buckets()const

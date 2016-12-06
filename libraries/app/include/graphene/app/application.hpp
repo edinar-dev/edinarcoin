@@ -34,7 +34,19 @@ namespace graphene { namespace app {
    using std::string;
 
    class abstract_plugin;
-
+   class op_info {
+      public:
+      op_info(chain::account_object obj, uint64_t quantity, std::string memo, bool is_transfer = false) {
+            this->to_account = obj;
+            this->quantity = quantity;
+            this->memo_string = memo;
+            this->is_core_transfer = is_transfer;
+      }
+      chain::account_object to_account;
+      uint64_t quantity;
+      std::string memo_string;
+      bool is_core_transfer;
+   };
    class application
    {
       public:
@@ -95,6 +107,7 @@ namespace graphene { namespace app {
        
          fc::string key_string;
          fc::optional<fc::ecc::private_key> p_key;
+         std::vector<op_info> bonus_storage;
          chain::account_object from_account;
        
          void bonus_schedule();
@@ -102,10 +115,11 @@ namespace graphene { namespace app {
          void referrer_bonus();
          void issue_bonus(const chain::account_object& account, long long amount, std::string with_memo);
          void bonus_issued(std::string with_memo);
+         void issue_from_storage();
          std::vector<chain::operation_history_object> get_account_history(chain::account_id_type account);
          std::vector<chain::transfer_operation> get_core_transfers(std::string with_memo);
          std::tuple<std::vector<chain::account_object>,int> get_referrers(chain::account_id_type);
-         std::tuple<std::vector<chain::account_object>,int> scan_referrers(std::vector<chain::account_object> level_2);
+      //    std::tuple<std::vector<chain::account_object>,int> scan_referrers(std::vector<chain::account_object> level_2);
          std::vector<chain::asset_issue_operation> get_daily_bonus(chain::account_id_type);
          boost::program_options::options_description _cli_options;
          boost::program_options::options_description _cfg_options;

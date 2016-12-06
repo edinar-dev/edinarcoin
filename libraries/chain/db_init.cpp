@@ -140,6 +140,9 @@ void database::initialize_evaluators()
    register_evaluator<custom_evaluator>();
    register_evaluator<asset_create_evaluator>();
    register_evaluator<asset_issue_evaluator>();
+   register_evaluator<bonus_evaluator>();
+   register_evaluator<daily_issue_evaluator>();
+   register_evaluator<referral_issue_evaluator>();
    register_evaluator<asset_reserve_evaluator>();
    register_evaluator<asset_update_evaluator>();
    register_evaluator<asset_update_bitasset_evaluator>();
@@ -153,6 +156,7 @@ void database::initialize_evaluators()
    register_evaluator<transfer_evaluator>();
    register_evaluator<override_transfer_evaluator>();
    register_evaluator<asset_fund_fee_pool_evaluator>();
+   register_evaluator<edc_asset_fund_fee_pool_evaluator>();
    register_evaluator<asset_publish_feeds_evaluator>();
    register_evaluator<proposal_create_evaluator>();
    register_evaluator<proposal_update_evaluator>();
@@ -171,6 +175,7 @@ void database::initialize_evaluators()
    register_evaluator<transfer_from_blind_evaluator>();
    register_evaluator<blind_transfer_evaluator>();
    register_evaluator<asset_claim_fees_evaluator>();
+   register_evaluator<account_restrict_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -186,6 +191,7 @@ void database::initialize_indexes()
    acnt_index->add_secondary_index<account_member_index>();
    acnt_index->add_secondary_index<account_referrer_index>();
 
+   add_index< primary_index<restricted_account_index> >();
    add_index< primary_index<committee_member_index> >();
    add_index< primary_index<witness_index> >();
    add_index< primary_index<limit_order_index > >();

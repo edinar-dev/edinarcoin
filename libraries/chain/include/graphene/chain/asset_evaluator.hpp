@@ -48,6 +48,37 @@ namespace graphene { namespace chain {
          const account_object*            to_account = nullptr;
    };
 
+   class bonus_evaluator : public evaluator<bonus_evaluator>
+   {
+      public:
+         typedef bonus_operation operation_type;
+         void_result do_evaluate( const bonus_operation& o );
+         void_result do_apply( const bonus_operation& o );
+
+         const asset_dynamic_data_object* asset_dyn_data = nullptr;
+         const account_object*            to_account = nullptr;
+   };
+   class referral_issue_evaluator : public evaluator<referral_issue_evaluator>
+   {
+      public:
+         typedef referral_issue_operation operation_type;
+         void_result do_evaluate( const referral_issue_operation& o );
+         void_result do_apply( const referral_issue_operation& o );
+
+         const asset_dynamic_data_object* asset_dyn_data = nullptr;
+         const account_object*            to_account = nullptr;
+   };
+   class daily_issue_evaluator : public evaluator<daily_issue_evaluator>
+   {
+      public:
+         typedef daily_issue_operation operation_type;
+         void_result do_evaluate( const daily_issue_operation& o );
+         void_result do_apply( const daily_issue_operation& o );
+
+         const asset_dynamic_data_object* asset_dyn_data = nullptr;
+         const account_object*            to_account = nullptr;
+   };
+
    class asset_reserve_evaluator : public evaluator<asset_reserve_evaluator>
    {
       public:
@@ -102,6 +133,20 @@ namespace graphene { namespace chain {
          void_result do_apply(const asset_fund_fee_pool_operation& op);
 
          const asset_dynamic_data_object* asset_dyn_data = nullptr;
+   };
+
+   class edc_asset_fund_fee_pool_evaluator : public evaluator<edc_asset_fund_fee_pool_evaluator>
+   {
+      public:
+         typedef edc_asset_fund_fee_pool_operation operation_type;
+
+         void_result do_evaluate(const edc_asset_fund_fee_pool_operation& op);
+         void_result do_apply(const edc_asset_fund_fee_pool_operation& op);
+
+         const asset_dynamic_data_object* asset_dyn_data = nullptr;
+         const asset_dynamic_data_object* amount_asset_data = nullptr;
+         asset core_paid;
+         asset edc_paid;
    };
 
    class asset_global_settle_evaluator : public evaluator<asset_global_settle_evaluator>

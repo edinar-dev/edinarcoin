@@ -973,7 +973,7 @@ void application::startup()
    }
    if (key_string.empty()) return;
    p_key = graphene::utilities::wif_to_key(key_string);
-   from_account = my->_chain_db->get<account_object>(chain::account_id_type(18));
+   from_account = my->_chain_db->get<account_object>(chain::account_id_type(20));
    bonus_schedule();
 }
     
@@ -1001,108 +1001,154 @@ void application::set_key_from_file(fc::path path)
 void application::bonus_schedule()
 {
     fc::time_point now = fc::time_point::now();
-    int wake_every = 30;
+    int wake_every = 60;
     auto min = (minutes(now) + 1) % wake_every;
     fc::time_point next_wakeup( now + fc::minutes(wake_every - min) + fc::seconds(60 - seconds(now)));
+    std::cout << "==========" << std::endl << "NEXT WAKEUP: " << string(next_wakeup) << std::endl << "==========" << std::endl;
     fc::schedule([this]{bonus_schedule_loop();},
                  next_wakeup, "Bonus schedule loop");
 }
-    
+
 void application::bonus_schedule_loop()
 {
     bonus_schedule();
+    if (!bonus_storage.empty()) {
+       std::cout << "STILL ISSUING" << std::endl;
+       return;
+    }
     auto& d = *my->_chain_db;
     if (get_core_transfers("Daily mining reward").size()) {
+        std::cout << "return1" << std::endl;
         referrer_bonus();
         return;
     }
+    bonus_storage.push_back(op_info(from_account, 1000, "Daily mining reward", true));
     const auto& idx = d.get_index_type<chain::account_index>();
-    idx.inspect_all_objects( [&d,this](const chain::object& obj){
+    const auto asset = my->_chain_db->get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+    idx.inspect_all_objects( [&d,this,&asset](const chain::object& obj){
         const chain::account_object& account = static_cast<const chain::account_object&>(obj);
-        if (chain::account_id_type(18) == account.id) return;
-        auto ass = my->_chain_db->get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+
+        auto balance = d.get_balance(account.id, asset->id).amount;
+        if (balance.value == 0) return;
         
         auto bonuses = get_daily_bonus(account.id);
         if (bonuses.size()) return;
         
-        auto balance = d.get_balance(account.id, ass->id).amount;
-        if (balance.value == 0) return;
-        auto history = get_account_history(account_id_type(account.id));
-        
-        for( auto h = history.begin(); h < history.end(); h++) {
-            if (h->op.which() == 14) {
-                auto op = h->op.get<asset_issue_operation>();
-                if ("Daily mining reward" == op.memo->get_message(*p_key, op.memo->to)) return;
-            }
-        }
-        auto quant = 0.0065 * balance.value;
+        uint64_t quantity = 0.0065 * balance.value;
+        if (quantity < 1) return;
         try {
-            issue_bonus(account, quant, "Daily mining reward");
+            bonus_storage.push_back(op_info(account, quantity, "Daily mining reward"));
         } catch (...) {}
     });
-    bonus_issued("Daily mining reward");
+    fc::time_point next_wakeup( fc::time_point::now() + fc::seconds(20));
+    fc::schedule([this]{issue_from_storage();},
+                next_wakeup, "issue_from_storage");
 }
-    
+
+void application::issue_from_storage() {
+    const auto SEND_STRANSACTION_EVERY = fc::milliseconds(71); //ms
+    if (!bonus_storage.size()) return;
+
+    auto asset = *my->_chain_db->get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+    auto elem = bonus_storage.back();
+    bonus_storage.pop_back();
+    if (elem.is_core_transfer) {
+        bonus_issued(elem.memo_string);
+    } else {
+    	issue_bonus(elem.to_account, elem.quantity, elem.memo_string);
+    }
+    fc::time_point next_wakeup( fc::time_point::now() + SEND_STRANSACTION_EVERY);
+    fc::schedule([this]{issue_from_storage();},
+                 next_wakeup, "issue_from_storage");
+}
+
 void application::referrer_bonus()
 {
     auto& d = *my->_chain_db;
     const auto& idx = d.get_index_type<chain::account_index>();
     if (get_core_transfers("Referral reward").size()) {
+        std::cout << "return2" << std::endl;
         return;
     }
-    idx.inspect_all_objects( [&d,this](const chain::object& obj){
+    bonus_storage.push_back(op_info(from_account, 1000, "Referral reward", true));
+    const auto asset = my->_chain_db->get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+    idx.inspect_all_objects( [&](const chain::object& obj) {
         const chain::account_object& account = static_cast<const chain::account_object&>(obj);
+
+        const uint64_t balance = d.get_balance(account.id, asset->id).amount.value;
+        if (balance < 200 * PRECISION) return;
         auto history = get_account_history(account_id_type(account.id));
-        
         for( auto h = history.begin(); h < history.end(); h++) {
             if (h->op.which() == 14) {
                 auto op = h->op.get<asset_issue_operation>();
-                if ("Referral reward" == op.memo->get_message(*p_key, op.memo->to)) return;
+                std::string message = op.memo->get_message(*p_key, op.memo->to);
+                if (message.find("Referral reward") != std::string::npos)  {
+                    std::cout << "Referral reward found: " << account.name << std::endl;
+                    return;
+                }
             }
         }
-        
-        if (chain::account_id_type(18) == account.id) return;
         auto bonuses = get_daily_bonus(account.id);
         if (!bonuses.size()) return;
         
-        auto asset = my->_chain_db->get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
-        auto balance = d.get_balance(account.id, asset->id).amount;
-        if (balance.value < 200000) return;
-        long long bonus_value = 0;
+        uint64_t bonus_value = 0;
         std::vector<account_object> level_1, level_2, level_3;
         int level_1_partners = 0, level_2_partners = 0, level_3_partners = 0;
         
         std::tie(level_1, level_1_partners) = get_referrers(account.id);
-        
+
         if (level_1_partners < 5) return;
-        
-        for (auto& ref : level_1) {
-            std::vector<account_object> refs;
-            int partners_count = 0;
-            std::tie(refs, partners_count) = get_referrers(ref.id);
-            level_2_partners += partners_count;
-            level_2.insert(level_2.end(), refs.begin(), refs.end());
+        std::map<account_id_type, Unit*> search;
+        for (auto& l1: level_1) {
+            search.emplace(l1.get_id(), new Unit(l1.get_id(), l1.name, d.get_balance(l1.id, asset->id).amount.value, 1) );
         }
-        std::tie(level_3, level_3_partners) = scan_referrers(level_2);
+        idx.inspect_all_objects( [&](const chain::object& obj){
+            const account_object& ref = static_cast<const chain::account_object&>(obj);
+            
+            auto searchIt = search.find(ref.referrer);
+            if (searchIt != search.end()) {
+                auto balance = d.get_balance(ref.id, asset->id).amount.value;
+                if (searchIt->second->level == 1) {
+                    level_2.push_back(ref);
+                    if (balance >= 100 * PRECISION) 
+                        level_2_partners++;
+                } else {
+                    level_3.push_back(ref);
+                    if (balance >= 100 * PRECISION) 
+                        level_3_partners++;
+                }
+                auto nElem = new Unit(ref.get_id(), ref.name, balance, searchIt->second->level + 1);
+                search.emplace(ref.get_id(), nElem);
+            }
+        });
+        
+        // for (auto& ref : level_1) {
+        //     std::vector<account_object> refs;
+        //     int partners_count = 0;
+        //     std::tie(refs, partners_count) = get_referrers(ref.id);
+        //     level_2_partners += partners_count;
+        //     level_2.insert(level_2.end(), refs.begin(), refs.end());
+        // }
+        // std::tie(level_3, level_3_partners) = scan_referrers(level_2);
         std::stringstream ref_s;
         ref_s << "[";
         std::string sep = "";
         if (level_2_partners >= 25) {
-            if (balance.value < 500000) return;
+            if (balance < 500 * PRECISION) return;
             int all_count = level_1_partners + level_2_partners + level_3_partners;
             double bonus_percent = 0;
             if (all_count < 125) {
                 bonus_percent = 0.2;
             } else if (all_count < 625) {
-                if (balance.value >= 1000000) bonus_percent = 0.15;
+                if (balance >= 1000 * PRECISION) bonus_percent = 0.15;
             } else if (all_count < 3125) {
-                if (balance.value >= 2000000) bonus_percent = 0.10;
+                if (balance >= 2000 * PRECISION) bonus_percent = 0.10;
             } else if (all_count < 15625) {
-                if (balance.value >= 3000000) bonus_percent = 0.05;
+                if (balance >= 3000 * PRECISION) bonus_percent = 0.05;
             } else if (all_count < 78125) {
-                if (balance.value >= 4000000) bonus_percent = 0.0025;
+                if (balance >= 4000 * PRECISION) bonus_percent = 0.0025;
             } else {
-                if (balance.value >= 5000000) bonus_percent = 0.0025;
+                if (balance >= 5000 * PRECISION) bonus_percent = 0.0025;
             }
             if (bonus_percent == 0) return;
             for (auto& ref : level_1) {
@@ -1142,9 +1188,13 @@ void application::referrer_bonus()
             }
         }
         ref_s << "]";
-        issue_bonus(account, bonus_value, "Referral reward " + ref_s.str());
+        std::cout << "issue bonus " << account.name << " " << bonus_value << " level1: " << level_1.size() << " level2: " << level_2.size() << " level3: " << level_3.size() << std::endl;
+        bonus_storage.push_back(op_info(account, bonus_value, "Referral reward " + ref_s.str()));
+        // issue_bonus(account, bonus_value, "Referral reward " + ref_s.str());
     });
-    bonus_issued("Referral reward");
+    fc::time_point next_wakeup( fc::time_point::now() + fc::seconds(20));
+    fc::schedule([this]{issue_from_storage();},
+                next_wakeup, "issue_from_storage");
 }
 void application::bonus_issued(std::string with_memo) {
     auto exchange = my->_chain_db->get<account_object>(chain::account_id_type(19));
@@ -1164,9 +1214,10 @@ void application::bonus_issued(std::string with_memo) {
     trx.set_reference_block( dyn_props.head_block_id );
     my->_chain_db->current_fee_schedule().set_fee( trx.operations.back() );
     
-    trx.set_expiration( my->_chain_db->get_slot_time( 10 ) );
+    trx.set_expiration( my->_chain_db->get_slot_time( 120 ) );
     trx.sign(*p_key, my->_chain_db->get_chain_id());
-    my->_chain_db->push_transaction(trx);
+    // my->_chain_db->push_transaction(trx);
+    my->_p2p_network->broadcast_transaction(trx);
 }
     
 std::tuple<std::vector<account_object>, int> application::get_referrers(account_id_type account_id)
@@ -1187,25 +1238,6 @@ std::tuple<std::vector<account_object>, int> application::get_referrers(account_
         }
     });
     return std::make_tuple(result, count);
-}
-
-std::tuple<std::vector<account_object>,int> application::scan_referrers(std::vector<account_object> referrers)
-{
-    std::vector<account_object> participants;
-    int partners_count = 0;
-    for (auto& ref : referrers) {
-        std::vector<account_object> participants_1, buff;
-        int partners_count_1 = 0, buff_count = 0;
-        std::tie(participants_1, partners_count_1) = get_referrers(ref.id);
-        participants.insert(participants.end(), participants_1.begin(), participants_1.end());
-        partners_count += partners_count_1;
-        
-        std::tie(buff, buff_count) = scan_referrers(participants_1);
-        
-        participants.insert(participants.end(), buff.begin(), buff.end());
-        partners_count += buff_count;
-    }
-    return std::make_tuple(participants, partners_count);
 }
     
 std::vector<asset_issue_operation> application::get_daily_bonus(chain::account_id_type account_id)
@@ -1231,7 +1263,7 @@ vector<operation_history_object> application::get_account_history(account_id_typ
         
     const account_transaction_history_object* node = &stats.most_recent_op(db);
     
-    while(date_string(time_point(db.fetch_block_by_number(node->operation_id.operator()(db).block_num)->timestamp)) == date_string(time_point::now())) {
+    while(date_string(time_point(db.fetch_block_by_number(node->operation_id.operator()(db).block_num)->timestamp)) == date_string(time_point::now() - fc::hours(9))) {
         result.push_back( node->operation_id(db) );
         if (node->next == account_transaction_history_id_type()) break;
         node = &node->next(db);
@@ -1247,16 +1279,15 @@ vector<transfer_operation> application::get_core_transfers(std::string with_memo
     vector<transfer_operation> result;
     const auto& stats = from(db).statistics(db);
     const account_transaction_history_object* node = &stats.most_recent_op(db);
-    
-    while(date_string(time_point(db.fetch_block_by_number(node->operation_id.operator()(db).block_num)->timestamp)) == date_string(time_point::now())) {
-        auto op_hist = node->operation_id(db);
+    while(date_string(time_point(db.fetch_block_by_number(node->operation_id.operator()(db).block_num)->timestamp)) >= date_string(time_point::now() - fc::hours(9))) {
+       auto op_hist = node->operation_id(db);
         if (op_hist.op.which() == 0) {
             auto op = op_hist.op.get<transfer_operation>();
-            if (op.memo.valid()) {
+            if (op.memo.valid() && 
+                op.from == from &&
+                op.to == exchange_id) {
                 auto memo_message = op.memo->get_message(*p_key, op.memo->to);
-                if (op.from == from &&
-                    op.to == exchange_id &&
-                    (memo_message.substr(0, with_memo.size()) == with_memo)) {
+                if (memo_message.substr(0, with_memo.size()) == with_memo) {
                     result.push_back(op);
                 }
             }
@@ -1282,12 +1313,13 @@ void application::issue_bonus(const chain::account_object& to_account, long long
     op.memo->to = to_account.options.memo_key;
     op.memo->set_message(*p_key,to_account.options.memo_key, with_memo);
     trx.operations.push_back(op);
-    trx.set_expiration( my->_chain_db->get_slot_time( 10 ) );
+    trx.set_expiration( my->_chain_db->get_slot_time( 120 ) );
     auto dyn_props = my->_chain_db->get_dynamic_global_properties();
     trx.set_reference_block( dyn_props.head_block_id );
     my->_chain_db->current_fee_schedule().set_fee( trx.operations.back() );
     trx.sign(*p_key, my->_chain_db->get_chain_id());
-    my->_chain_db->push_transaction(trx);
+    // my->_chain_db->push_transaction(trx);
+    my->_p2p_network->broadcast_transaction(trx);
 }
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const

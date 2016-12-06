@@ -88,7 +88,10 @@ namespace graphene { namespace chain {
          static bool is_valid_symbol( const string& symbol );
 
          /// @return true if this is a market-issued asset; false otherwise.
-         bool is_market_issued()const { return false; }//bitasset_data_id.valid(); }
+         bool is_market_issued()const { 
+               if (get_id() == asset_id_type(1)) return false;
+               return bitasset_data_id.valid(); 
+         }
          /// @return true if users may request force-settlement of this market-issued asset; false otherwise
          bool can_force_settle()const { return !(options.flags & disable_force_settle); }
          /// @return true if the issuer of this market-issued asset may globally settle the asset; false otherwise

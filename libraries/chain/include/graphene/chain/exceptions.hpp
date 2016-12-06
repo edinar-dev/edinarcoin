@@ -94,7 +94,9 @@ namespace graphene { namespace chain {
    GRAPHENE_DECLARE_OP_BASE_EXCEPTIONS( transfer );
    GRAPHENE_DECLARE_OP_EVALUATE_EXCEPTION( from_account_not_whitelisted, transfer, 1, "owner mismatch" )
    GRAPHENE_DECLARE_OP_EVALUATE_EXCEPTION( to_account_not_whitelisted, transfer, 2, "owner mismatch" )
-   GRAPHENE_DECLARE_OP_EVALUATE_EXCEPTION( restricted_transfer_asset, transfer, 3, "restricted transfer asset" )
+   GRAPHENE_DECLARE_OP_EVALUATE_EXCEPTION( from_account_restricted, transfer, 3, "restricted account" )
+   GRAPHENE_DECLARE_OP_EVALUATE_EXCEPTION( to_account_restricted, transfer, 4, "restricted account" )
+   GRAPHENE_DECLARE_OP_EVALUATE_EXCEPTION( restricted_transfer_asset, transfer, 5, "restricted transfer asset" )
 
    //GRAPHENE_DECLARE_OP_BASE_EXCEPTIONS( limit_order_create );
    //GRAPHENE_DECLARE_OP_BASE_EXCEPTIONS( limit_order_cancel );
