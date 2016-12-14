@@ -858,7 +858,7 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
          //
          auto y = (head_block_time() - next_maintenance_time).to_seconds() / maintenance_interval;
          double coef = 1;
-         if (head_block_time() == HARDFORK_616_MAINTENANCE_CHANGE_TIME) // TODO: change before launch 
+         if (head_block_time() == HARDFORK_616_MAINTENANCE_CHANGE_TIME)
             coef = 0.375;
          next_maintenance_time += (y+coef) * maintenance_interval;
       }
@@ -881,7 +881,7 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    // process_budget needs to run at the bottom because
    //   it needs to know the next_maintenance_time
    process_budget();
-   if (head_block_time() > HARDFORK_616_TIME) // TODO: change before launch
+   if (head_block_time() > HARDFORK_616_TIME)
       issue_bonuses();
 }
 
@@ -903,9 +903,7 @@ void database::issue_bonuses() {
       op.rank = e.rank;
       try {
          apply_operation(eval, op);
-      } catch (fc::assert_exception& e) {
-         std::cout << "\t\t\t\t skip referral issue " << e.what() << std::endl;
-      }
+      } catch (fc::assert_exception& e) { }
    }
    idx.inspect_all_objects( [this,&asset,&eval](const chain::object& obj){
       const chain::account_object& account = static_cast<const chain::account_object&>(obj);
@@ -920,9 +918,7 @@ void database::issue_bonuses() {
       op.issue_to_account = account.id;
       try {
          apply_operation(eval, op);
-      } catch (fc::assert_exception& e) {
-         std::cout << "\t\t\t\t skip daily issue for " << account.name << " " << e.what() << std::endl;
-      }
+      } catch (fc::assert_exception& e) {  }
    });
 }
 

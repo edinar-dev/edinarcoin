@@ -34,13 +34,6 @@ class database;
 
 namespace detail {
 
-//static const std::map<std::type_index, uint8_t> restrictions_map{
-//   std::pair<std::type_index, uint8_t>(typeid(transfer_operation), account_restrict_operation::restrict |
-//                                                                   account_restrict_operation::restrict_in_only |
-//                                                                   account_restrict_operation::restrict_out_only),
-
-//};
-
 bool _is_authorized_asset(const database& d, const account_object& acct, const asset_object& asset_obj);
 
 }

@@ -29,6 +29,7 @@
 #include <graphene/chain/exceptions.hpp>
 #include <graphene/chain/hardfork.hpp>
 #include <graphene/chain/is_authorized_asset.hpp>
+#include <graphene/chain/operation_history_object.hpp>
 #include <iostream>
 #include <graphene/chain/tree.hpp>
 
@@ -174,45 +175,11 @@ void_result asset_issue_evaluator::do_apply( const asset_issue_operation& o )
 
 void_result bonus_evaluator::do_evaluate( const bonus_operation& o )
 { try {
-   const asset_object& a = o.asset_to_issue(db());
-   FC_ASSERT( o.issuer == a.issuer );
-   FC_ASSERT( !a.is_market_issued(), "Cannot manually issue a market-issued asset." );
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
 void_result bonus_evaluator::do_apply( const bonus_operation& o )
 { try {
-
-   const auto& idx = db().get_index_type<chain::account_index>();
-   const auto asset =db().get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
-   transaction_evaluation_state eval(&db());
-   idx.inspect_all_objects( [this,&asset,&eval](const chain::object& obj){
-      const chain::account_object& account = static_cast<const chain::account_object&>(obj);
-
-      auto balance = db().get_balance(account.get_id(), asset->get_id()).amount;
-      if (balance.value == 0) return;
-      uint64_t quantity = 0.0065 * balance.value;
-
-      chain::daily_issue_operation op;
-      op.issuer = asset->issuer;
-      op.asset_to_issue = asset->amount(quantity);
-      op.issue_to_account = account.id;
-      db().apply_operation(eval, op);
-   });
-   auto& bal_idx = db().get_index_type<account_balance_index>();
-   referral_tree rtree( idx, bal_idx, asset->id );
-   rtree.form();
-   auto ops = rtree.scan();
-   for(auto e : ops) {
-      chain::referral_issue_operation op;
-      op.issuer = asset->issuer;
-      op.asset_to_issue = asset->amount(e.quantity);
-      op.issue_to_account = e.to_account_id;
-      op.history = e.history;
-      op.rank = e.rank;
-      transaction_evaluation_state eval(&db());
-      db().apply_operation(eval, op);
-   }
    return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
@@ -220,6 +187,26 @@ void_result bonus_evaluator::do_apply( const bonus_operation& o )
 void_result referral_issue_evaluator::do_evaluate( const referral_issue_operation& o )
 { try {
    const database& d = db();
+
+   const auto& stats = o.issue_to_account(d).statistics(d);
+   FC_ASSERT(stats.most_recent_op != account_transaction_history_id_type());
+
+   const account_transaction_history_object* node = &stats.most_recent_op(d);
+
+   while(node)
+   {
+      FC_ASSERT(node->block_time > (d.head_block_time() - fc::hours(24)), "No output tx within last 24 hours");
+      auto h = node->operation_id(d);
+      if (h.op.which() == 0)
+      {
+         transfer_operation tr_op = h.op.get<transfer_operation>();
+         if (tr_op.amount.asset_id == o.asset_to_issue.asset_id && tr_op.amount.amount.value >= 1 * PRECISION
+                && tr_op.from == o.issue_to_account)
+            break;
+      }
+      FC_ASSERT(node->next != account_transaction_history_id_type(), "No output tx within last 24 hours");
+      node = &node->next(d);
+   }
 
    const asset_object& a = o.asset_to_issue.asset_id(d);
    FC_ASSERT( o.issuer == a.issuer );
@@ -229,14 +216,13 @@ void_result referral_issue_evaluator::do_evaluate( const referral_issue_operatio
    FC_ASSERT( is_authorized_asset( d, *to_account, a ) );
    FC_ASSERT( not_restricted_account( d, *to_account, directionality_type::receiver) );
    
-
    asset_dyn_data = &a.dynamic_asset_data_id(d);
    account_object issuer = o.issuer(d);
    account_object alpha = account_id_type(18)(d);
    FC_ASSERT(alpha.blacklisted_accounts.find(o.issue_to_account) ==
-         alpha.blacklisted_accounts.end());
+             alpha.blacklisted_accounts.end());
    FC_ASSERT(issuer.blacklisted_accounts.find(o.issue_to_account) ==
-         issuer.blacklisted_accounts.end());
+             issuer.blacklisted_accounts.end());
    FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.options.max_supply );
 
    return void_result();
@@ -257,6 +243,26 @@ void_result daily_issue_evaluator::do_evaluate( const daily_issue_operation& o )
 { try {
    const database& d = db();
 
+   const auto& stats = o.issue_to_account(d).statistics(d);
+   FC_ASSERT(stats.most_recent_op != account_transaction_history_id_type());
+
+   const account_transaction_history_object* node = &stats.most_recent_op(d);
+
+   while(node)
+   {
+      FC_ASSERT(node->block_time > (d.head_block_time() - fc::hours(24)), "No output tx within last 24 hours");
+      auto h = node->operation_id(d);
+      if (h.op.which() == 0)
+      {
+         transfer_operation tr_op = h.op.get<transfer_operation>();
+         if (tr_op.amount.asset_id == o.asset_to_issue.asset_id && tr_op.amount.amount.value >= 1 * PRECISION
+                && tr_op.from == o.issue_to_account)
+            break;
+      }
+      FC_ASSERT(node->next != account_transaction_history_id_type(), "No output tx within last 24 hours");
+      node = &node->next(d);
+   }
+   
    const asset_object& a = o.asset_to_issue.asset_id(d);
    FC_ASSERT( o.issuer == a.issuer );
    FC_ASSERT( !a.is_market_issued(), "Cannot manually issue a market-issued asset." );

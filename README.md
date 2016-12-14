@@ -14,11 +14,11 @@ and then proceed with:
     git submodule update --init --recursive
     cmake .
     make
-    ./programs/witness_node/witness_node --data-dir=data/witness --seed-node 138.201.192.132:5908 --rpc-endpoint = 0.0.0.0:8899
+    programs/witness_node/witness_node --data-dir=data/witness --seed-node=138.201.192.132:5908 --rpc-endpoint=0.0.0.0:8899 --genesis-json=genesis.json
 
 Then, in a separate terminal window, start the command-line wallet `cli_wallet`:
 
-    ./programs/cli_wallet/cli_wallet --server-rpc-endpoint=ws://127.0.0.1:8899
+    programs/cli_wallet/cli_wallet --server-rpc-endpoint=ws://127.0.0.1:8899
 
 To set password:
 

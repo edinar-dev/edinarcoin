@@ -471,46 +471,6 @@ const vector<optional< operation_history_object > >& database::get_applied_opera
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 {
    auto block_num = next_block.block_num(); 
-   if (next_block.timestamp == HARDFORK_616_TIME) {  // TODO: change before launch 
-      modify(get_global_properties(), [] (global_property_object& gpo) {
-         auto& current_fees = *gpo.parameters.current_fees;
-         uint32_t scale = current_fees.scale;
-
-         flat_map< int, fee_parameters > fee_map;
-         fee_map.reserve( current_fees.parameters.size() );
-         for( const fee_parameters& op_fee : current_fees.parameters )
-            fee_map[ op_fee.which() ] = op_fee;
-
-         asset_create_operation::fee_parameters_type asset_create_fee = {};
-         asset_create_fee.symbol3 = 1000000000;
-         asset_create_fee.symbol4 = 1000000000;
-         asset_create_fee.long_symbol = 1000000000;
-         asset_create_fee.price_per_kbyte = 0;
-         fee_map[10] = fee_parameters( asset_create_fee);
-
-         transfer_to_blind_operation::fee_parameters_type transfer_to_blind_fee = {};
-         transfer_to_blind_fee.fee = 0;
-         transfer_to_blind_fee.price_per_output = 1000000;
-         fee_map[39] = fee_parameters(transfer_to_blind_fee);
-
-         blind_transfer_operation::fee_parameters_type blind_transfer_fee = {};
-         blind_transfer_fee.fee = 0;
-         blind_transfer_fee.price_per_output = 1000000;
-         fee_map[40] = fee_parameters(blind_transfer_fee);
-
-         transfer_from_blind_operation::fee_parameters_type transfer_from_blind_fee = {};
-         transfer_from_blind_fee.fee = 1000000;
-         fee_map[41] = fee_parameters(transfer_from_blind_fee);
-
-         fee_schedule_type new_fees;
-         for( const std::pair< int, fee_parameters >& item : fee_map )
-            new_fees.parameters.insert( item.second );
-         new_fees.scale = scale;
-         chain_parameters new_params = gpo.parameters;
-         new_params.current_fees = new_fees;
-         gpo.pending_parameters = new_params;
-      }); 
-   } 
   if (block_num == 1752250) {
       modify(get_global_properties(), [] (global_property_object& gpo) {
          gpo.parameters.committee_proposal_review_period = 300;
