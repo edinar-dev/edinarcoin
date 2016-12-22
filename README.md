@@ -1,12 +1,12 @@
 For Ubuntu users, see this link first:
 
-    https://github.com/cryptonomex/graphene/wiki/build-ubuntu
+    <https://github.com/edincoin/EDINARCOIN/wiki/build-ubuntu>
 Windows: 
 
-    https://github.com/cryptonomex/graphene/wiki/BUILD_WIN32
+    <https://github.com/edincoin/EDINARCOIN/wiki/BUILD_WIN32>
 OS X: 
 
-    https://github.com/cryptonomex/graphene/wiki/Building-on-OS-X
+    <https://github.com/edincoin/EDINARCOIN/wiki/Building-on-OS-X>
 and then proceed with:
 
     git clone https://github.com/edincoin/EDINARCOIN.git
