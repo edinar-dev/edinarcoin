@@ -1,12 +1,15 @@
 For Ubuntu users, see this link first:
 
-    <https://github.com/edincoin/EDINARCOIN/wiki/build-ubuntu>
+   https://github.com/edincoin/EDINARCOIN/wiki/build-ubuntu
+
 Windows: 
 
-    <https://github.com/edincoin/EDINARCOIN/wiki/BUILD_WIN32>
+   https://github.com/edincoin/EDINARCOIN/wiki/BUILD_WIN32
+
 OS X: 
 
-    <https://github.com/edincoin/EDINARCOIN/wiki/Building-on-OS-X>
+   https://github.com/edincoin/EDINARCOIN/wiki/Building-on-OS-X
+
 and then proceed with:
 
     git clone https://github.com/edincoin/EDINARCOIN.git
@@ -35,5 +38,9 @@ To import your initial balance:
 If you send private keys over this connection, `rpc-endpoint` should be bound to localhost for security.
 
 A list of CLI wallet commands is available here:
+    
+   https://github.com/edincoin/EDINARCOIN/blob/master/libraries/wallet/include/graphene/wallet/wallet.hpp
 
-    https://github.com/edincoin/EDINARCOIN/blob/master/libraries/wallet/include/graphene/wallet/wallet.hpp
+Information about delayed_node is availiable here:
+
+   https://github.com/edincoin/EDINARCOIN/wiki/Delayed%20node
