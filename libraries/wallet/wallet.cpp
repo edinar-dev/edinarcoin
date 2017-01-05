@@ -2907,6 +2907,15 @@ vector<operation_detail> wallet_api::get_account_operation_history(string name, 
    return result;
 }
 
+vector<operation_history_object> wallet_api::get_account_operation_history2(account_id_type account, 
+                                                                            operation_history_id_type stop, 
+                                                                            int limit, 
+                                                                            operation_history_id_type start,
+                                                                            int operation_type ) const
+{
+   return my->_remote_hist->get_account_operation_history2(account, stop, std::min(100,limit), start, operation_type);
+}
+
 
 vector<bucket_object> wallet_api::get_market_history( string symbol1, string symbol2, uint32_t bucket )const
 {
