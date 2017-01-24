@@ -392,6 +392,9 @@ namespace graphene { namespace chain {
           * can be reapplied at the proper time */
          std::deque< signed_transaction >       _popped_tx;
 
+         // rework later
+         bool                              maint_needed          = false;
+
          /**
           * @}
           */
@@ -477,7 +480,6 @@ namespace graphene { namespace chain {
           * emited.
           */
          vector<optional<operation_history_object> >  _applied_ops;
-
          uint32_t                          _current_block_num    = 0;
          uint16_t                          _current_trx_in_block = 0;
          uint16_t                          _current_op_in_trx    = 0;

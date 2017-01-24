@@ -1833,6 +1833,7 @@ void database_api_impl::on_objects_removed( const vector<const object*>& objs )
 
 void database_api_impl::on_objects_changed(const vector<object_id_type>& ids)
 {
+   if (_db.maint_needed) return;
    vector<variant>    updates;
    map< pair<asset_id_type, asset_id_type>,  vector<variant> > market_broadcast_queue;
 
@@ -1844,9 +1845,6 @@ void database_api_impl::on_objects_changed(const vector<object_id_type>& ids)
          obj = _db.find_object( id );
          if( obj )
          {
-            auto h_op = dynamic_cast<const operation_history_object*>(obj);
-            if (h_op != nullptr)
-               if (h_op->op.which() == 46 || h_op->op.which() == 47) continue;
             updates.emplace_back( obj->to_variant() );
          }
          else

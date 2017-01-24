@@ -504,7 +504,7 @@ void database::_apply_block( const signed_block& next_block )
    const witness_object& signing_witness = validate_block_header(skip, next_block);
    const auto& global_props = get_global_properties();
    const auto& dynamic_global_props = get<dynamic_global_property_object>(dynamic_global_property_id_type());
-   bool maint_needed = (dynamic_global_props.next_maintenance_time <= next_block.timestamp);
+   maint_needed = (dynamic_global_props.next_maintenance_time <= next_block.timestamp);
 
    _current_block_num    = next_block_num;
    _current_trx_in_block = 0;
@@ -542,6 +542,7 @@ void database::_apply_block( const signed_block& next_block )
    // update_global_dynamic_data() as perhaps these methods only need
    // to be called for header validation?
    update_maintenance_flag( maint_needed );
+   maint_needed = false;
    update_witness_schedule();
    if( !_node_property_object.debug_updates.empty() )
       apply_debug_updates();
