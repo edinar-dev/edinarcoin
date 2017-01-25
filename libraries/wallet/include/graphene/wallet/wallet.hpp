@@ -335,6 +335,12 @@ class wallet_api
        * @returns a list of \c operation_history_objects
        */
       vector<operation_detail>  get_account_history(string name, int limit)const;
+
+      vector<operation_detail>  get_account_history_part(account_id_type account,
+                                                         operation_history_id_type stop = operation_history_id_type(),
+                                                         int limit = 100,
+                                                         operation_history_id_type start = operation_history_id_type())const;
+
       vector<operation_detail>  get_account_operation_history(string name, int op_type, int limit)const;
       vector<operation_history_object>  get_account_operation_history2(account_id_type account,
                                                                        operation_history_id_type stop = operation_history_id_type(),
@@ -1657,6 +1663,7 @@ FC_API( graphene::wallet::wallet_api,
         (get_block)
         (get_account_count)
         (get_account_history)
+        (get_account_history_part)
         (get_account_operation_history)
         (get_account_operation_history2)
         (get_market_history)
