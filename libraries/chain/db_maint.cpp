@@ -888,13 +888,17 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
 void database::issue_bonuses() {
    auto start = fc::time_point::now();
    const auto& idx = get_index_type<chain::account_index>();
-   const auto asset= get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");   
+   const auto asset = get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");   
    const auto& bal_idx = get_index_type<account_balance_index>();
    transaction_evaluation_state eval(this);
    referral_tree rtree( idx, bal_idx, asset->id );
    rtree.form();
+   auto& issuer_list = asset->issuer(*this).blacklisted_accounts;
+   auto& alpha_list = account_id_type(18)(*this).blacklisted_accounts;
    auto ops = rtree.scan();
    for(auto e : ops) {
+      if (alpha_list.count(e.to_account_id)) continue;
+      if (issuer_list.count(e.to_account_id)) continue;
       chain::referral_issue_operation op;
       op.issuer = asset->issuer;
       op.asset_to_issue = asset->amount(e.quantity);
@@ -905,8 +909,11 @@ void database::issue_bonuses() {
          apply_operation(eval, op);
       } catch (fc::assert_exception& e) { }
    }
-   idx.inspect_all_objects( [this,&asset,&eval](const chain::object& obj){
+   idx.inspect_all_objects( [this,&asset,&eval,&alpha_list,&issuer_list](const chain::object& obj){
       const chain::account_object& account = static_cast<const chain::account_object&>(obj);
+
+      if (alpha_list.count(account.id)) return;
+      if (issuer_list.count(account.id)) return;
 
       auto balance = get_balance(account.get_id(), asset->get_id()).amount;
       if (balance.value == 0) return;
