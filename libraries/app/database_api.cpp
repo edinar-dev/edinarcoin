@@ -1833,6 +1833,7 @@ void database_api_impl::on_objects_removed( const vector<const object*>& objs )
 
 void database_api_impl::on_objects_changed(const vector<object_id_type>& ids)
 {
+   if (_db.start_notify_block_num >= _db.head_block_num()) return;
    vector<variant>    updates;
    map< pair<asset_id_type, asset_id_type>,  vector<variant> > market_broadcast_queue;
 
