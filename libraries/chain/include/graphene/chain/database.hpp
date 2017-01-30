@@ -63,6 +63,8 @@ namespace graphene { namespace chain {
          database();
          ~database();
 
+         int64_t start_notify_block_num = 0;
+
          enum validation_steps
          {
             skip_nothing                = 0,

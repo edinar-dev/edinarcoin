@@ -217,12 +217,6 @@ void_result referral_issue_evaluator::do_evaluate( const referral_issue_operatio
    FC_ASSERT( not_restricted_account( d, *to_account, directionality_type::receiver) );
    
    asset_dyn_data = &a.dynamic_asset_data_id(d);
-   account_object issuer = o.issuer(d);
-   account_object alpha = account_id_type(18)(d);
-   FC_ASSERT(alpha.blacklisted_accounts.find(o.issue_to_account) ==
-             alpha.blacklisted_accounts.end());
-   FC_ASSERT(issuer.blacklisted_accounts.find(o.issue_to_account) ==
-             issuer.blacklisted_accounts.end());
    FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.options.max_supply );
 
    return void_result();
@@ -272,12 +266,6 @@ void_result daily_issue_evaluator::do_evaluate( const daily_issue_operation& o )
    FC_ASSERT( not_restricted_account( d, *to_account, directionality_type::receiver) );
 
    asset_dyn_data = &a.dynamic_asset_data_id(d);
-   account_object issuer = o.issuer(d);
-   account_object alpha = account_id_type(18)(d);
-   FC_ASSERT(alpha.blacklisted_accounts.find(o.issue_to_account) ==
-         alpha.blacklisted_accounts.end());
-   FC_ASSERT(issuer.blacklisted_accounts.find(o.issue_to_account) ==
-         issuer.blacklisted_accounts.end());
    FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.options.max_supply );
 
    return void_result();

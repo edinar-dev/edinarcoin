@@ -2161,7 +2161,7 @@ public:
          return result.get_string();
       };
 
-      m["get_account_history"] = [this](variant result, const fc::variants& a)
+       m["get_account_history_part"] = m["get_account_history"] = [this](variant result, const fc::variants& a)
       {
          auto r = result.as<vector<operation_detail>>();
          std::stringstream ss;
@@ -2171,7 +2171,7 @@ public:
             operation_history_object& i = d.op;
             auto b = _remote_db->get_block_header(i.block_num);
             FC_ASSERT(b);
-            ss << b->timestamp.to_iso_string() << " ";
+            ss << b->timestamp.to_iso_string() << " " << string(d.op.id) << " ";
             i.op.visit(operation_printer(ss, *this, i.result));
             ss << " \n";
          }
@@ -2886,6 +2886,29 @@ vector<operation_detail> wallet_api::get_account_history(string name, int limit)
    return result;
 }
 
+vector<operation_detail>  wallet_api::get_account_history_part(account_id_type account_id,
+                                                               operation_history_id_type stop,
+                                                               int limit,
+                                                               operation_history_id_type start)const
+ {
+    vector<operation_detail> result;
+ 
+    while( limit > 0 )
+    {
+       vector<operation_history_object> current = my->_remote_hist->get_account_history(account_id, stop, std::min(100,limit), start);
+       for( auto& o : current ) {
+          std::stringstream ss;
+          auto memo = o.op.visit(detail::operation_printer(ss, *my, o.result));
+          result.push_back( operation_detail{ memo, ss.str(), o } );
+       }
+       if( current.size() < std::min(100,limit) )
+          break;
+       limit -= current.size();
+    }
+ 
+    return result;
+ }
+
 vector<operation_detail> wallet_api::get_account_operation_history(string name, int type, int limit) const
 {
    vector<operation_detail> result;
@@ -2905,6 +2928,15 @@ vector<operation_detail> wallet_api::get_account_operation_history(string name, 
    }
 
    return result;
+}
+
+vector<operation_history_object> wallet_api::get_account_operation_history2(account_id_type account, 
+                                                                            operation_history_id_type stop, 
+                                                                            int limit, 
+                                                                            operation_history_id_type start,
+                                                                            int operation_type ) const
+{
+   return my->_remote_hist->get_account_operation_history2(account, stop, std::min(100,limit), start, operation_type);
 }
 
 

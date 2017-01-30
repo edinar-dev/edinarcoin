@@ -474,6 +474,36 @@ namespace graphene { namespace app {
       return result;
     }
 
+    vector<operation_history_object> history_api::get_account_operation_history2( account_id_type account, 
+                                                                       operation_history_id_type stop, 
+                                                                       unsigned limit, 
+                                                                       operation_history_id_type start,
+                                                                       unsigned operation_type ) const
+    { 
+      FC_ASSERT( _app.chain_database() );
+      const auto& db = *_app.chain_database();       
+      FC_ASSERT( limit <= 100 );
+      vector<operation_history_object> result;
+      const auto& stats = account(db).statistics(db);
+      if( stats.most_recent_op == account_transaction_history_id_type() ) return result;
+      const account_transaction_history_object* node = &stats.most_recent_op(db);
+      if( start == operation_history_id_type() )
+        start = node->operation_id;
+         
+      while(node && node->operation_id.instance.value > stop.instance.value && result.size() < limit)
+      {
+        auto h = node->operation_id(db);
+        if( node->operation_id.instance.value <= start.instance.value )
+          if (h.op.which() == operation_type)
+            result.push_back( node->operation_id(db) );
+        if( node->next == account_transaction_history_id_type() )
+          node = nullptr;
+        else node = &node->next(db);
+      }
+
+      return result;
+   }
+
     flat_set<uint32_t> history_api::get_market_history_buckets()const
     {
        auto hist = _app.get_plugin<market_history_plugin>( "market_history" );

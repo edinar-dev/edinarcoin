@@ -1833,12 +1833,15 @@ void database_api_impl::on_objects_removed( const vector<const object*>& objs )
 
 void database_api_impl::on_objects_changed(const vector<object_id_type>& ids)
 {
-   if (_db.maint_needed) return;
+   if (_db.start_notify_block_num >= _db.head_block_num()) return;
    vector<variant>    updates;
    map< pair<asset_id_type, asset_id_type>,  vector<variant> > market_broadcast_queue;
 
    for(auto id : ids)
    {
+      if (id == account_id_type(18) ||
+          id == account_id_type(20)  )
+         continue; 
       const object* obj = nullptr;
       if( _subscribe_callback )
       {
