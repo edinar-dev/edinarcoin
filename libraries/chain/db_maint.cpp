@@ -718,7 +718,7 @@ void deprecate_annual_members( database& db )
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
    const auto& gpo = get_global_properties();
-   start_notify_block_num = head_block_num() + 5;
+   start_notify_block_num = head_block_num() + 8;
    distribute_fba_balances(*this);
    create_buyback_orders(*this);
 

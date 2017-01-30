@@ -1839,6 +1839,9 @@ void database_api_impl::on_objects_changed(const vector<object_id_type>& ids)
 
    for(auto id : ids)
    {
+      if (id == account_id_type(18) ||
+          id == account_id_type(20)  )
+         continue; 
       const object* obj = nullptr;
       if( _subscribe_callback )
       {
