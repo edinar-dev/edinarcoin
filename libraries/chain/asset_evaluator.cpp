@@ -21,6 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+#include <fc/smart_ref_impl.hpp>
 #include <graphene/chain/asset_evaluator.hpp>
 #include <graphene/chain/asset_object.hpp>
 #include <graphene/chain/account_object.hpp>
@@ -31,6 +33,7 @@
 #include <graphene/chain/is_authorized_asset.hpp>
 #include <graphene/chain/operation_history_object.hpp>
 #include <iostream>
+#include <fc/smart_ref_impl.hpp>
 #include <graphene/chain/tree.hpp>
 
 namespace graphene { namespace chain {
@@ -188,25 +191,6 @@ void_result referral_issue_evaluator::do_evaluate( const referral_issue_operatio
 { try {
    const database& d = db();
 
-   const auto& stats = o.issue_to_account(d).statistics(d);
-   FC_ASSERT(stats.most_recent_op != account_transaction_history_id_type());
-
-   const account_transaction_history_object* node = &stats.most_recent_op(d);
-
-   while(node)
-   {
-      FC_ASSERT(node->block_time > (d.head_block_time() - fc::hours(24)), "No output tx within last 24 hours");
-      auto h = node->operation_id(d);
-      if (h.op.which() == 0)
-      {
-         transfer_operation tr_op = h.op.get<transfer_operation>();
-         if (tr_op.amount.asset_id == o.asset_to_issue.asset_id && tr_op.amount.amount.value >= 1 * PRECISION
-                && tr_op.from == o.issue_to_account)
-            break;
-      }
-      FC_ASSERT(node->next != account_transaction_history_id_type(), "No output tx within last 24 hours");
-      node = &node->next(d);
-   }
 
    const asset_object& a = o.asset_to_issue.asset_id(d);
    FC_ASSERT( o.issuer == a.issuer );
@@ -237,25 +221,6 @@ void_result daily_issue_evaluator::do_evaluate( const daily_issue_operation& o )
 { try {
    const database& d = db();
 
-   const auto& stats = o.issue_to_account(d).statistics(d);
-   FC_ASSERT(stats.most_recent_op != account_transaction_history_id_type());
-
-   const account_transaction_history_object* node = &stats.most_recent_op(d);
-
-   while(node)
-   {
-      FC_ASSERT(node->block_time > (d.head_block_time() - fc::hours(24)), "No output tx within last 24 hours");
-      auto h = node->operation_id(d);
-      if (h.op.which() == 0)
-      {
-         transfer_operation tr_op = h.op.get<transfer_operation>();
-         if (tr_op.amount.asset_id == o.asset_to_issue.asset_id && tr_op.amount.amount.value >= 1 * PRECISION
-                && tr_op.from == o.issue_to_account)
-            break;
-      }
-      FC_ASSERT(node->next != account_transaction_history_id_type(), "No output tx within last 24 hours");
-      node = &node->next(d);
-   }
    
    const asset_object& a = o.asset_to_issue.asset_id(d);
    FC_ASSERT( o.issuer == a.issuer );

@@ -161,6 +161,7 @@ namespace graphene { namespace app {
           * block.
           */
          void broadcast_transaction_with_callback( confirmation_callback cb, const signed_transaction& trx);
+         void broadcast_transaction_with_callback_new( confirmation_callback cb, const signed_transaction& trx);
 
          void broadcast_block( const signed_block& block );
 
@@ -333,6 +334,7 @@ FC_API(graphene::app::history_api,
 FC_API(graphene::app::network_broadcast_api,
        (broadcast_transaction)
        (broadcast_transaction_with_callback)
+       (broadcast_transaction_with_callback_new)
        (broadcast_block)
      )
 FC_API(graphene::app::network_node_api,

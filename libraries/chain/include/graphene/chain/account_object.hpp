@@ -111,67 +111,38 @@ namespace graphene { namespace chain {
          void  adjust_balance(const asset& delta);
    };
 
-   struct SimpleUnit
+      /**
+    * @brief Tracks the balance of a single account/asset pair
+    * @ingroup object
+    *
+    * This object is indexed on owner and asset_type so that black swan
+    * events in asset_type can be processed quickly.
+    */
+   class mature_balances_history
    {
-      std::string rank = "";
-      account_id_type id;
-      std::string name;
-      uint64_t balance;
+      public:
+         share_type real_balance;
+         share_type balance;
+         mature_balances_history(share_type real_balance, share_type balance) :
+                               real_balance(real_balance), balance(balance) {}
+         mature_balances_history() :
+                               real_balance(0), balance(0) {}
 
-      SimpleUnit() : name(""), balance(0) {}
-      SimpleUnit(account_id_type id, std::string name, uint64_t balance) :
-         id(id), name(name), balance(balance) {}
    };
+   class account_mature_balance_object : public abstract_object<account_mature_balance_object>
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_account_mature_balance_object_type;
 
-   struct Unit : SimpleUnit {
-       Unit() : SimpleUnit(account_id_type(), "", 0), level(0) {}
-       Unit(account_id_type id, std::string name, uint64_t balance, int level) :
-          SimpleUnit(id, name, balance), level(level) {}
-       Unit(account_id_type id, std::string name, uint64_t balance) :
-          SimpleUnit(id, name, balance), level(0) {}
-       std::vector<Unit> referrals;
-       int level;
-   };
+         account_id_type   owner;
+         asset_id_type     asset_type;
+         share_type        balance;
+         bool              transfer_condition = false;  
+         vector<mature_balances_history> history;
 
-   struct ref_info {
-      ref_info() {}
-      ref_info( account_id_type acc_id, string name, uint64_t bal,
-                uint32_t level_1_partners, uint64_t level_1_sum,
-                uint32_t level_2_partners,
-                uint32_t all_partners, uint64_t all_sum,
-                double bonus_percent) :
-        id(acc_id), name(name), balance(bal),
-        level_1_partners(level_1_partners), level_1_sum(level_1_sum),
-        level_2_partners(level_2_partners),
-        all_partners(all_partners), all_sum(all_sum),
-        bonus_percent(bonus_percent) {}
-      ref_info( account_id_type acc_id, string name, uint64_t bal )
-               :        id(acc_id), name(name), balance(bal) {}
-      ref_info( leaf_info leaf, string _name )
-      {
-        id                 = leaf.account_id;
-        name               = _name;
-        balance            = leaf.balance;
-        level_1_partners   = leaf.level_1_partners;
-        level_1_sum        = leaf.level_1_sum;
-        level_2_partners   = leaf.level_2_partners;
-        all_partners       = leaf.all_partners;
-        all_sum            = leaf.all_sum;
-        bonus_percent      = leaf.bonus_percent;
-        rank               = leaf.rank;
-      }
-
-      account_id_type id;
-      string name;
-      string rank;
-      uint64_t balance = 0;
-      uint32_t level_1_partners = 0;
-      uint64_t level_1_sum = 0;
-      uint32_t level_2_partners = 0;
-      uint32_t all_partners = 0;
-      uint64_t all_sum = 0;
-      double bonus_percent = 0;
-      vector<ref_info> level_1;
+         asset get_balance()const { return asset(balance, asset_type); }
+         void  adjust_balance(const asset& delta, const asset& real_balance, const uint8_t precision);
    };
 
     class restricted_account_object : public graphene::db::abstract_object<restricted_account_object>
@@ -383,9 +354,72 @@ namespace graphene { namespace chain {
          map< account_id_type, set<account_id_type> > referred_by;
    };
 
+   struct SimpleUnit
+   {
+      std::string rank = "";
+      account_id_type id;
+      std::string name;
+      uint64_t balance;
+
+      SimpleUnit() : name(""), balance(0) {}
+      SimpleUnit(account_id_type id, std::string name, uint64_t balance) :
+         id(id), name(name), balance(balance) {}
+   };
+
+   struct Unit : SimpleUnit {
+       Unit() : SimpleUnit(account_id_type(), "", 0), level(0) {}
+       Unit(account_id_type id, std::string name, uint64_t balance, int level) :
+          SimpleUnit(id, name, balance), level(level) {}
+       Unit(account_id_type id, std::string name, uint64_t balance) :
+          SimpleUnit(id, name, balance), level(0) {}
+       std::vector<Unit> referrals;
+       int level;
+   };
+
+   struct ref_info {
+      ref_info() {}
+      ref_info( account_id_type acc_id, string name, uint64_t bal,
+                uint32_t level_1_partners, uint64_t level_1_sum,
+                uint32_t level_2_partners,
+                uint32_t all_partners, uint64_t all_sum,
+                double bonus_percent) :
+        id(acc_id), name(name), balance(bal),
+        level_1_partners(level_1_partners), level_1_sum(level_1_sum),
+        level_2_partners(level_2_partners),
+        all_partners(all_partners), all_sum(all_sum),
+        bonus_percent(bonus_percent) {}
+      ref_info( account_id_type acc_id, string name, uint64_t bal )
+               :        id(acc_id), name(name), balance(bal) {}
+      ref_info( leaf_info leaf, string _name )
+      {
+        id                 = leaf.account_id;
+        name               = _name;
+        balance            = leaf.balance;
+        level_1_partners   = leaf.level_1_partners;
+        level_1_sum        = leaf.level_1_sum;
+        level_2_partners   = leaf.level_2_partners;
+        all_partners       = leaf.all_partners;
+        all_sum            = leaf.all_sum;
+        bonus_percent      = leaf.bonus_percent;
+        rank               = leaf.rank;
+      }
+
+      account_id_type id;
+      string name;
+      string rank;
+      uint64_t balance = 0;
+      uint32_t level_1_partners = 0;
+      uint64_t level_1_sum = 0;
+      uint32_t level_2_partners = 0;
+      uint32_t all_partners = 0;
+      uint64_t all_sum = 0;
+      double bonus_percent = 0;
+      vector<ref_info> level_1;
+   };
+
    struct by_account_asset;
    struct by_asset_balance;
-   /**
+     /**
     * @ingroup object_index
     */
    typedef multi_index_container<
@@ -419,6 +453,41 @@ namespace graphene { namespace chain {
     * @ingroup object_index
     */
    typedef generic_index<account_balance_object, account_balance_object_multi_index_type> account_balance_index;
+   
+   /**
+    * @ingroup object_index
+    */
+   typedef multi_index_container<
+      account_mature_balance_object,
+      indexed_by<
+         ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag<by_account_asset>,
+            composite_key<
+               account_mature_balance_object,
+               member<account_mature_balance_object, account_id_type, &account_mature_balance_object::owner>,
+               member<account_mature_balance_object, asset_id_type, &account_mature_balance_object::asset_type>
+            >
+         >,
+         ordered_unique< tag<by_asset_balance>,
+            composite_key<
+               account_mature_balance_object,
+               member<account_mature_balance_object, asset_id_type, &account_mature_balance_object::asset_type>,
+               member<account_mature_balance_object, share_type, &account_mature_balance_object::balance>,
+               member<account_mature_balance_object, account_id_type, &account_mature_balance_object::owner>
+            >,
+            composite_key_compare<
+               std::less< asset_id_type >,
+               std::greater< share_type >,
+               std::less< account_id_type >
+            >
+         >
+      >
+   > account_mature_balance_object_multi_index_type;
+
+   /**
+    * @ingroup object_index
+    */
+   typedef generic_index<account_mature_balance_object, account_mature_balance_object_multi_index_type> account_mature_balance_index;
 
    struct by_name{};
 
@@ -458,14 +527,15 @@ namespace graphene { namespace chain {
 
 }}
 FC_REFLECT( graphene::chain::SimpleUnit, (rank)(id)(name)(balance));
+FC_REFLECT( graphene::chain::mature_balances_history, (balance)(real_balance));
 FC_REFLECT_DERIVED( graphene::chain::Unit, (graphene::chain::SimpleUnit), (referrals)(level));
 FC_REFLECT( graphene::chain::ref_info,
             (level_1)(id)(name)(balance)(level_1_partners)(level_1_sum)(level_2_partners)
-            (all_partners)(all_sum)(bonus_percent)(rank) )
+            (all_partners)(all_sum)(bonus_percent)(rank) );
 
 FC_REFLECT_DERIVED( graphene::chain::restricted_account_object,
             (graphene::db::object),
-            (account)(restriction_type))
+            (account)(restriction_type));
 
 FC_REFLECT_DERIVED( graphene::chain::account_object,
                     (graphene::db::object),
@@ -477,11 +547,15 @@ FC_REFLECT_DERIVED( graphene::chain::account_object,
                     (owner_special_authority)(active_special_authority)
                     (top_n_control_flags)
                     (allowed_assets)
-                    )
+                    );
 
 FC_REFLECT_DERIVED( graphene::chain::account_balance_object,
                     (graphene::db::object),
-                    (owner)(asset_type)(balance) )
+                    (owner)(asset_type)(balance) );
+
+FC_REFLECT_DERIVED( graphene::chain::account_mature_balance_object,
+                    (graphene::db::object),
+                    (owner)(asset_type)(balance)(history)(transfer_condition) );
 
 FC_REFLECT_DERIVED( graphene::chain::account_statistics_object,
                     (graphene::chain::object),
@@ -491,5 +565,5 @@ FC_REFLECT_DERIVED( graphene::chain::account_statistics_object,
                     (total_core_in_orders)
                     (lifetime_fees_paid)
                     (pending_fees)(pending_vested_fees)
-                  )
+                  );
 

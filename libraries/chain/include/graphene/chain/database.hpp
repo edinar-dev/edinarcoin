@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #pragma once
+
 #include <graphene/chain/global_property_object.hpp>
 #include <graphene/chain/node_property_object.hpp>
 #include <graphene/chain/account_object.hpp>
@@ -249,6 +250,7 @@ namespace graphene { namespace chain {
          const asset_object&                    get_core_asset()const;
          const chain_property_object&           get_chain_properties()const;
          const global_property_object&          get_global_properties()const;
+         const account_properties_object&       get_account_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const node_property_object&            get_node_properties()const;
          const fee_schedule&                    current_fee_schedule()const;
@@ -287,6 +289,8 @@ namespace graphene { namespace chain {
           * @return owner's balance in asset
           */
          asset get_balance(account_id_type owner, asset_id_type asset_id)const;
+
+         asset get_mature_balance(account_id_type owner, asset_id_type asset_id)const;
          /// This is an overloaded method.
          asset get_balance(const account_object& owner, const asset_object& asset_obj)const;
 
@@ -451,7 +455,10 @@ namespace graphene { namespace chain {
          void process_budget();
          void pay_workers( share_type& budget );
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
+         void issue_bonuses_old();
          void issue_bonuses();
+         bool bonus_allowed(account_id_type issue_to_account, asset asset_to_issue, account_id_type issuer);
+         void clear_account_mature_balance_index();
          void update_active_witnesses();
          void update_active_committee_members();
          void update_worker_votes();

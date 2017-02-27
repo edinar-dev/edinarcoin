@@ -176,6 +176,7 @@ void database::initialize_evaluators()
    register_evaluator<blind_transfer_evaluator>();
    register_evaluator<asset_claim_fees_evaluator>();
    register_evaluator<account_restrict_evaluator>();
+   register_evaluator<account_allow_referrals_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -209,6 +210,7 @@ void database::initialize_indexes()
    //Implementation object indexes
    add_index< primary_index<transaction_index                             > >();
    add_index< primary_index<account_balance_index                         > >();
+   add_index< primary_index<account_mature_balance_index           > >();
    add_index< primary_index<asset_bitasset_data_index                     > >();
    add_index< primary_index<simple_index<global_property_object          >> >();
    add_index< primary_index<simple_index<dynamic_global_property_object  >> >();
@@ -222,6 +224,7 @@ void database::initialize_indexes()
    add_index< primary_index< buyback_index                                > >();
 
    add_index< primary_index< simple_index< fba_accumulator_object       > > >();
+   add_index< primary_index<simple_index<account_properties_object  >> >();
 }
 
 void database::init_genesis(const genesis_state_type& genesis_state)
@@ -254,6 +257,11 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    fc::ecc::private_key null_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("null_key")));
    create<account_balance_object>([](account_balance_object& b) {
       b.balance = GRAPHENE_MAX_SHARE_SUPPLY;
+   });
+
+   create<account_mature_balance_object>([](account_mature_balance_object& b) {
+       b.balance = GRAPHENE_MAX_SHARE_SUPPLY;
+       b.history.push_back(mature_balances_history(GRAPHENE_MAX_SHARE_SUPPLY, GRAPHENE_MAX_SHARE_SUPPLY));
    });
    const account_object& committee_account =
       create<account_object>( [&](account_object& n) {
@@ -400,6 +408,9 @@ void database::init_genesis(const genesis_state_type& genesis_state)
       p.dynamic_flags = 0;
       p.witness_budget = 0;
       p.recent_slots_filled = fc::uint128::max_value();
+   });
+
+   create<account_properties_object>([&](account_properties_object& p) {
    });
 
    FC_ASSERT( (genesis_state.immutable_parameters.min_witness_count & 1) == 1, "min_witness_count must be odd" );

@@ -147,6 +147,11 @@ namespace graphene { namespace app {
 
     void network_broadcast_api::broadcast_transaction_with_callback(confirmation_callback cb, const signed_transaction& trx)
     {
+       FC_THROW("Please, update your wallet");
+    }
+
+    void network_broadcast_api::broadcast_transaction_with_callback_new(confirmation_callback cb, const signed_transaction& trx)
+    {
        trx.validate();
        _callbacks[trx.id()] = cb;
        _app.chain_database()->push_transaction(trx);

@@ -204,7 +204,6 @@ void database_fixture::verify_asset_supplies( const database& db )
    {
       BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
    }
-
    BOOST_CHECK_EQUAL( core_in_orders.value , reported_core_in_orders.value );
    BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value - core_asset_data.confidential_supply.value);
 //   wlog("***  End  asset supply verification ***");
@@ -570,6 +569,7 @@ const account_object& database_fixture::create_account(
    const public_key_type& key /* = public_key_type() */
    )
 {
+   set_expiration(db, trx);
    trx.operations.push_back(make_account(name, key));
    trx.validate();
    processed_transaction ptx = db.push_transaction(trx, ~0);
@@ -896,6 +896,7 @@ void database_fixture::upgrade_to_lifetime_member( const account_object& account
 {
    try
    {
+      set_expiration( db, trx );
       account_upgrade_operation op;
       op.account_to_upgrade = account.get_id();
       op.upgrade_to_lifetime_member = true;
@@ -1028,6 +1029,11 @@ void database_fixture::print_joint_market( const string& syma, const string& sym
 int64_t database_fixture::get_balance( account_id_type account, asset_id_type a )const
 {
   return db.get_balance(account, a).amount.value;
+}
+
+int64_t database_fixture::get_mature_balance( account_id_type account, asset_id_type a )const
+{
+  return db.get_mature_balance(account, a).amount.value;
 }
 
 int64_t database_fixture::get_balance( const account_object& account, const asset_object& a )const

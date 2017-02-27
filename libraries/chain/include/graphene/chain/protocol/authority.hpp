@@ -98,6 +98,15 @@ namespace graphene { namespace chain {
          return result;
       }
 
+      vector<account_id_type> get_accounts() const
+      {
+         vector<account_id_type> result;
+         result.reserve( account_auths.size() );
+         for( const auto& k : account_auths )
+            result.push_back(k.first);
+         return result;
+      }
+
 
       friend bool operator == ( const authority& a, const authority& b )
       {

@@ -26,8 +26,10 @@ struct account_test_in {
    std::string name;
    std::string parent;
    leaf_info exp_data;
+   bool mand_transfer;
 
-   account_test_in(std::string _name, std::string _parent, leaf_info _exp_data):name(_name), parent(_parent), exp_data(_exp_data) {};
+   account_test_in(std::string _name, std::string _parent, leaf_info _exp_data, bool _mand_transfer = true) : 
+      name(_name), parent(_parent), exp_data(_exp_data), mand_transfer(_mand_transfer) {};
 
 };
 
@@ -37,10 +39,10 @@ struct account_children_in {
    int count;
    uint64_t balance;
    std::string name_prefix;
+   bool mand_transfer;
 
-
-   account_children_in(std::string _parent, int _level, int _count, uint64_t _balance, std::string _name_prefix  = "ref"):
-      parent(_parent), level(_level), count(_count), balance(_balance), name_prefix(_name_prefix){};
+   account_children_in(std::string _parent, int _level, int _count, uint64_t _balance, std::string _name_prefix  = "ref", bool _mand_transfer = true) :
+      parent(_parent), level(_level), count(_count), balance(_balance), mand_transfer(_mand_transfer), name_prefix(_name_prefix){};
 };
 
 struct referral_info_finder

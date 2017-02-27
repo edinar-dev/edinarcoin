@@ -54,6 +54,23 @@ namespace graphene { namespace chain {
          // n.b. witness scheduling is done by witness_schedule object
    };
 
+   class account_properties_object : public graphene::db::abstract_object<account_properties_object>
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_account_properties_object_type;
+
+         struct account_properties
+         {
+            bool                   can_be_referrer;
+            uint64_t               usages_count;
+            extensions_type        extensions;
+         };
+
+         std::map<account_id_type, account_properties> accounts_properties;
+         std::map<public_key_type, uint64_t> keys_usage_count;
+   };
+
    /**
     * @class dynamic_global_property_object
     * @brief Maintains global state information (committee_member list, current fees)
@@ -147,3 +164,9 @@ FC_REFLECT_DERIVED( graphene::chain::global_property_object, (graphene::db::obje
                     (active_committee_members)
                     (active_witnesses)
                   )
+
+
+FC_REFLECT( graphene::chain::account_properties_object::account_properties, (can_be_referrer)(extensions))
+FC_REFLECT_DERIVED( graphene::chain::account_properties_object, (graphene::db::object),
+   (accounts_properties)(keys_usage_count)
+)

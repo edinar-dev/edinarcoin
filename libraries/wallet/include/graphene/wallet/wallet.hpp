@@ -1493,6 +1493,8 @@ class wallet_api
 
       signed_transaction propose_account_restriction(const string& initiator, const string& target, account_restrict_operation::account_action action,
                                                     fc::time_point_sec expiration_time, bool broadcast = true);
+      signed_transaction propose_account_referrals_permission(const string& initiator, const string& target, account_allow_referrals_operation::account_action action,
+                                                    fc::time_point_sec expiration_time, bool broadcast = true);
 
       void dbg_make_uia(string creator, string symbol);
       void dbg_make_mia(string creator, string symbol);
@@ -1638,6 +1640,7 @@ FC_API( graphene::wallet::wallet_api,
         (settle_asset)
         (whitelist_account)
         (propose_account_restriction)
+        (propose_account_referrals_permission)
         (create_committee_member)
         (get_witness)
         (get_committee_member)

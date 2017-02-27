@@ -28,7 +28,7 @@
 #include <graphene/chain/asset_object.hpp>
 #include <graphene/chain/vesting_balance_object.hpp>
 #include <graphene/chain/witness_object.hpp>
-
+#include <iostream>
 namespace graphene { namespace chain {
 
 asset database::get_balance(account_id_type owner, asset_id_type asset_id) const
@@ -36,6 +36,15 @@ asset database::get_balance(account_id_type owner, asset_id_type asset_id) const
    auto& index = get_index_type<account_balance_index>().indices().get<by_account_asset>();
    auto itr = index.find(boost::make_tuple(owner, asset_id));
    if( itr == index.end() )
+      return asset(0, asset_id);
+   return itr->get_balance();
+}
+
+asset database::get_mature_balance(account_id_type owner, asset_id_type asset_id) const
+{
+   auto& index = get_index_type<account_mature_balance_index>().indices().get<by_account_asset>();
+   auto itr = index.find(boost::make_tuple(owner, asset_id));
+   if( itr == index.end() || !itr->transfer_condition )
       return asset(0, asset_id);
    return itr->get_balance();
 }
@@ -55,6 +64,14 @@ void database::adjust_balance(account_id_type account, asset delta )
    if( delta.amount == 0 )
       return;
 
+   auto& mat_index = get_index_type<account_mature_balance_index>().indices().get<by_account_asset>();
+   auto mat_itr = mat_index.find(boost::make_tuple(account, delta.asset_id));
+   double interval_part = 1;
+   double interval_length = get_global_properties().parameters.maintenance_interval;
+   if (get_dynamic_global_properties().next_maintenance_time >= head_block_time())
+      interval_part = ((get_dynamic_global_properties().next_maintenance_time.sec_since_epoch() - head_block_time().sec_since_epoch())) / interval_length;
+   if (interval_part > 1) interval_part = 1;
+
    auto& index = get_index_type<account_balance_index>().indices().get<by_account_asset>();
    auto itr = index.find(boost::make_tuple(account, delta.asset_id));
    if(itr == index.end())
@@ -68,14 +85,25 @@ void database::adjust_balance(account_id_type account, asset delta )
          b.asset_type = delta.asset_id;
          b.balance = delta.amount.value;
       });
+      create<account_mature_balance_object>([this,account,delta,&interval_part](account_mature_balance_object& b) {
+          b.owner = account;
+          b.asset_type = delta.asset_id;
+          b.balance = delta.amount.value * interval_part;
+          b.history.push_back(mature_balances_history(delta.amount, b.balance));
+      });
    } else {
       if( delta.amount < 0 )
          FC_ASSERT( itr->get_balance() >= -delta, "Insufficient Balance: ${a}'s balance of ${b} is less than required ${r}", ("a",account(*this).name)("b",to_pretty_string(itr->get_balance()))("r",to_pretty_string(-delta)));
       modify(*itr, [delta](account_balance_object& b) {
          b.adjust_balance(delta);
       });
+      int64_t value = delta.amount.value;
+      if (value > 0)
+         value *= interval_part;
+      modify(*mat_itr, [delta,&value,this](account_mature_balance_object& b) {
+         b.adjust_balance(asset(value, delta.asset_id), delta, delta.asset_id(*this).precision);
+      });
    }
-
 } FC_CAPTURE_AND_RETHROW( (account)(delta) ) }
 
 optional< vesting_balance_id_type > database::deposit_lazy_vesting(

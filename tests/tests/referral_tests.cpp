@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE( tree_create_test )
       auto& acc_idx = db.get_index_type<account_index>();
       auto& bal_idx = db.get_index_type<account_balance_index>();
       referral_tree result(acc_idx, bal_idx, asset_id_type());
-      result.form();
+      result.form_old();
 
       std::for_each( test_accounts.begin(), test_accounts.end(), [&](account_test_in acc_parent_pair) {
          BOOST_ASSERT(result.referral_map.count(accounts_map[acc_parent_pair.name].id));
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE( balances_test )
       auto& bal_idx = db.get_index_type<account_balance_index>();
 
       referral_tree result(acc_idx, bal_idx, asset_id_type());
-      result.form();
+      result.form_old();
 
       std::for_each( test_accounts.begin(), test_accounts.end(), [&](account_test_in& acc_parent_pair) {
          BOOST_CHECK(result.referral_map[accounts_map[acc_parent_pair.name].id].node->data == acc_parent_pair.exp_data);
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE( level_a_test )
       auto& bal_idx = db.get_index_type<account_balance_index>();
 
       referral_tree result(acc_idx, bal_idx, asset_id_type());
-      result.form();
+      result.form_old();
 
       std::for_each( test_accounts.begin(), test_accounts.end(), [&](account_test_in& acc_parent_pair) {
          BOOST_CHECK(result.referral_map[accounts_map[acc_parent_pair.name].id].node->data == acc_parent_pair.exp_data);
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE( level_a_test )
       std::list<referral_info> ops_info_expected = {
             referral_info(accounts_map["nathan3"].id, 125000 * 0.0065, ""),
       };
-      std::list<referral_info> ops_info = result.scan();
+      std::list<referral_info> ops_info = result.scan_old();
 
       BOOST_CHECK(ops_info_expected.size() <= ops_info.size());
 
@@ -246,7 +246,7 @@ BOOST_AUTO_TEST_CASE( level_b_test )
       auto& bal_idx = db.get_index_type<account_balance_index>();
 
       referral_tree result(acc_idx, bal_idx, asset_id_type());
-      result.form();
+      result.form_old();
 
       std::for_each( test_accounts.begin(), test_accounts.end(), [&](account_test_in& acc_parent_pair) {
          BOOST_CHECK(result.referral_map[accounts_map[acc_parent_pair.name].id].node->data == acc_parent_pair.exp_data);
@@ -257,7 +257,7 @@ BOOST_AUTO_TEST_CASE( level_b_test )
             referral_info(accounts_map["nathan4"].id, 125000 * 0.0065, ""),
             referral_info(accounts_map["nathan7"].id, 600000 * 0.0065, ""),
       };
-      std::list<referral_info> ops_info = result.scan();
+      std::list<referral_info> ops_info = result.scan_old();
 
       BOOST_CHECK(ops_info_expected.size() <= ops_info.size());
 
@@ -321,7 +321,7 @@ BOOST_AUTO_TEST_CASE( level_c_test )
       auto& bal_idx = db.get_index_type<account_balance_index>();
 
       referral_tree result(acc_idx, bal_idx, asset_id_type());
-      result.form();
+      result.form_old();
 
       std::for_each( test_accounts.begin(), test_accounts.end(), [&](account_test_in& acc_parent_pair) {
          BOOST_CHECK(result.referral_map[accounts_map[acc_parent_pair.name].id].node->data == acc_parent_pair.exp_data);
@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE( level_c_test )
             referral_info(accounts_map["nathan3"].id, 2480000 * 0.0065, ""),
             referral_info(accounts_map["nathan4"].id, 2490000 * 0.0065, ""),
       };
-      std::list<referral_info> ops_info = result.scan();
+      std::list<referral_info> ops_info = result.scan_old();
 
       BOOST_CHECK(ops_info_expected.size() <= ops_info.size());
 
@@ -379,7 +379,7 @@ BOOST_AUTO_TEST_CASE( level_d_test )
       auto& bal_idx = db.get_index_type<account_balance_index>();
 
       referral_tree result(acc_idx, bal_idx, asset_id_type());
-      result.form();
+      result.form_old();
 
       std::for_each( test_accounts.begin(), test_accounts.end(), [&](account_test_in& acc_parent_pair) {
          BOOST_CHECK(result.referral_map[accounts_map[acc_parent_pair.name].id].node->data == acc_parent_pair.exp_data);
@@ -388,7 +388,7 @@ BOOST_AUTO_TEST_CASE( level_d_test )
       std::list<referral_info> ops_info_expected = {
             referral_info(accounts_map["nathan"].id, 6250000 * 0.0065, ""),
       };
-      std::list<referral_info> ops_info = result.scan();
+      std::list<referral_info> ops_info = result.scan_old();
 
       BOOST_CHECK(ops_info_expected.size() <= ops_info.size());
 
@@ -439,7 +439,7 @@ BOOST_AUTO_TEST_CASE( level_e_test )
       auto& bal_idx = db.get_index_type<account_balance_index>();
 
       referral_tree result(acc_idx, bal_idx, asset_id_type());
-      result.form();
+      result.form_old();
 
       std::for_each( test_accounts.begin(), test_accounts.end(), [&](account_test_in& acc_parent_pair) {
          BOOST_CHECK(result.referral_map[accounts_map[acc_parent_pair.name].id].node->data == acc_parent_pair.exp_data);
@@ -448,7 +448,7 @@ BOOST_AUTO_TEST_CASE( level_e_test )
       std::list<referral_info> ops_info_expected = {
             referral_info(accounts_map["nathan"].id, 15625000 * 0.0065, ""),
       };
-      std::list<referral_info> ops_info = result.scan();
+      std::list<referral_info> ops_info = result.scan_old();
 
       BOOST_CHECK(ops_info_expected.size() <= ops_info.size());
 
@@ -465,6 +465,5 @@ BOOST_AUTO_TEST_CASE( level_e_test )
       throw;
    }
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

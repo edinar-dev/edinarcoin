@@ -26,7 +26,7 @@ using namespace graphene::chain::test;
 
 
 
-BOOST_FIXTURE_TEST_SUITE( referral_mandatory_tx_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( referral_mandatory_transfer_test, database_fixture )
 
 BOOST_AUTO_TEST_CASE( no_out_transaction_issue_test )
 {

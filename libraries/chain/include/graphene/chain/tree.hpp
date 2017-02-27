@@ -4,7 +4,7 @@
 #include <graphene/chain/account_object.hpp>
 #include <graphene/chain/protocol/asset.hpp>
 #include "tree.hh"
-
+#include <iostream>
 #define PRECISION 1000
 
 namespace graphene { namespace chain {
@@ -23,6 +23,15 @@ class referral_info {
     vector<child_balance> history;
     uint64_t quantity; 
     string rank;
+    bool operator==(account_id_type acc_id) {
+        return to_account_id == acc_id;
+    }
+    void print() {
+        std::cout <<  " to_account_id: " << to_account_id.instance.value <<
+            " quantity: " << quantity <<
+            " history: " << history.size() <<
+            " rank: " << rank << std::endl;
+    }
 };
 
 class referral_tree {
@@ -32,21 +41,30 @@ class referral_tree {
     std::map<account_id_type, tree<leaf_info>::iterator> referral_map;
     const account_index& accounts_idx;
     const account_balance_index& balances_idx;
+    const account_mature_balance_index* mature_balances_idx;
     const asset_id_type asset_id;
     account_id_type root_account;
     tree<leaf_info> form();
+    tree<leaf_info> form_old();
     std::list<referral_info> scan();
-    referral_tree(const account_index& accs, const account_balance_index& bals, 
-                  asset_id_type asst, account_id_type root_account = account_id_type())
-                  : accounts_idx(accs), balances_idx(bals), asset_id(asst), root_account(root_account)
+    std::list<referral_info> scan_old();
+    referral_tree(const account_index& accs, const account_balance_index& bals,
+                  asset_id_type asst, account_id_type root_account = account_id_type(),
+                  const account_mature_balance_index* coin_maturity_bal_idx = nullptr)
+                  : accounts_idx(accs), balances_idx(bals), asset_id(asst), root_account(root_account),
+                    mature_balances_idx(coin_maturity_bal_idx)
     {
-        const uint64_t zero_account_balance = get_balance(root_account).amount.value;
+        int64_t zero_account_balance = get_balance(root_account).amount.value;
+        int64_t zero_mature_balance = get_mature_balance(root_account).amount.value;
         tree<leaf_info>::iterator top = tree_data.begin();
-        root = tree_data.insert(top, leaf_info(root_account, zero_account_balance));
+        root = tree_data.insert(top , leaf_info(root_account, zero_account_balance, zero_mature_balance));
         referral_map.insert(std::pair<account_id_type, tree<leaf_info>::iterator>(root_account, root));
     }
+
+    asset get_mature_balance(account_id_type owner);
     asset get_balance(account_id_type owner);
     void set_bonus_percents();
+    void set_bonus_percents_new();
 };
 
 }}

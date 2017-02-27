@@ -1406,6 +1406,30 @@ public:
          return sign_transaction(tx, broadcast);
    } FC_CAPTURE_AND_RETHROW( (initiator)(target)(action)(expiration_time)(broadcast) ) }
 
+   signed_transaction propose_account_referrals_permission(const string& initiator, const string& target, account_allow_referrals_operation::account_action action,
+                                                   fc::time_point_sec expiration_time, bool broadcast = true)
+   { try {
+
+         account_allow_referrals_operation rest_op;
+         rest_op.target = get_account_id(target);
+         rest_op.action = action;
+
+         proposal_create_operation prop_op;
+
+         prop_op.expiration_time = expiration_time;
+         prop_op.review_period_seconds = _remote_db->get_global_properties().parameters.committee_proposal_review_period;
+         prop_op.fee_paying_account = get_account_id(initiator);
+
+         prop_op.proposed_ops.emplace_back( rest_op );
+
+         signed_transaction tx;
+         tx.operations.push_back(prop_op);
+         set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees);
+         tx.validate();
+
+         return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (initiator)(target)(action)(expiration_time)(broadcast) ) }
+
    signed_transaction create_committee_member(string owner_account, string url,
                                       bool broadcast /* = false */)
    { try {
@@ -4467,6 +4491,12 @@ signed_transaction wallet_api::propose_account_restriction(const string& initiat
                                               fc::time_point_sec expiration_time, bool broadcast)
 {
    return my->propose_account_restriction(initiator, target, action, expiration_time, broadcast);
+}
+
+signed_transaction wallet_api::propose_account_referrals_permission(const string& initiator, const string& target, account_allow_referrals_operation::account_action action,
+                                              fc::time_point_sec expiration_time, bool broadcast)
+{
+   return my->propose_account_referrals_permission(initiator, target, action, expiration_time, broadcast);
 }
 
 signed_block_with_info::signed_block_with_info( const signed_block& block )

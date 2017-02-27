@@ -45,6 +45,8 @@
 #include <graphene/chain/vote_count.hpp>
 #include <graphene/chain/witness_object.hpp>
 #include <graphene/chain/worker_object.hpp>
+#include <graphene/chain/is_authorized_asset.hpp>
+
 namespace graphene { namespace chain {
 
 template<class Index>
@@ -881,24 +883,103 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    // process_budget needs to run at the bottom because
    //   it needs to know the next_maintenance_time
    process_budget();
-   if (head_block_time() > HARDFORK_616_TIME)
+   if (head_block_time() > HARDFORK_617_TIME) {
       issue_bonuses();
+   } else if (head_block_time() > HARDFORK_616_TIME) {
+      issue_bonuses_old();
+   }
+   if (head_block_time() != HARDFORK_616_MAINTENANCE_CHANGE_TIME)
+      clear_account_mature_balance_index();   
 }
 
 void database::issue_bonuses() {
    auto start = fc::time_point::now();
    const auto& idx = get_index_type<chain::account_index>();
-   const auto asset = get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");   
+   const auto asset = get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
    const auto& bal_idx = get_index_type<account_balance_index>();
+   auto& mat_bal_idx = get_index_type<account_mature_balance_index>();
    transaction_evaluation_state eval(this);
-   referral_tree rtree( idx, bal_idx, asset->id );
+   referral_tree rtree( idx, bal_idx, asset->id, account_id_type(), &mat_bal_idx );
    rtree.form();
    auto& issuer_list = asset->issuer(*this).blacklisted_accounts;
    auto& alpha_list = account_id_type(18)(*this).blacklisted_accounts;
    auto ops = rtree.scan();
+   idx.inspect_all_objects( [&](const chain::object& obj){
+      const chain::account_object& account = static_cast<const chain::account_object&>(obj);
+      
+      auto balance = get_mature_balance(account.get_id(), asset->get_id()).amount;
+      uint64_t quantity = 0.0065 * balance.value;
+      if (quantity < 1) return;
+
+      if ( alpha_list.count(account.get_id()) ) return;
+      if ( issuer_list.count(account.get_id()) ) return;
+      chain::daily_issue_operation op;
+      op.issuer = asset->issuer;
+      op.asset_to_issue = asset->amount(quantity);
+      op.issue_to_account = account.id;
+      try {
+         apply_operation(eval, op);
+      } catch (fc::assert_exception& e) {  }
+
+      auto e = std::find(ops.begin(), ops.end(), account.id);
+      if (e == ops.end()) return;
+      chain::referral_issue_operation r_op;
+      r_op.issuer = asset->issuer;
+      r_op.asset_to_issue = asset->amount(e->quantity);
+      r_op.issue_to_account = e->to_account_id;
+      r_op.history = e->history;
+      r_op.rank = e->rank;
+      try {
+         apply_operation(eval, r_op);
+      } catch (fc::assert_exception& e) { }
+   }); 
+   std::cout << "\t DONE IN: " <<  ((fc::time_point::now() - start).count() / 1000000.0) << std::endl;
+}
+
+void database::issue_bonuses_old() {
+   auto start = fc::time_point::now();
+   const auto& idx = get_index_type<chain::account_index>();
+   const auto asset = get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");   
+   const auto& bal_idx = get_index_type<account_balance_index>();
+
+   transaction_evaluation_state eval(this);
+   referral_tree rtree( idx, bal_idx, asset->id );
+   rtree.form_old();
+   auto& issuer_list = asset->issuer(*this).blacklisted_accounts;
+   auto& alpha_list = account_id_type(18)(*this).blacklisted_accounts;
+   auto ops = rtree.scan_old();
    for(auto e : ops) {
-      if (alpha_list.count(e.to_account_id)) continue;
-      if (issuer_list.count(e.to_account_id)) continue;
+      if ( alpha_list.count(e.to_account_id) ) continue;
+      if ( issuer_list.count(e.to_account_id) ) continue;
+
+      const auto& stats = e.to_account_id(*this).statistics(*this);
+      if (stats.most_recent_op == account_transaction_history_id_type()) continue;
+
+      const account_transaction_history_object* node = &stats.most_recent_op(*this);
+
+      bool need_continue = false;
+      while(node)
+      {
+         if (node->block_time <= (head_block_time() - fc::hours(24))) {
+            need_continue = true;
+            break;
+         }
+         auto h = node->operation_id(*this);
+         if (h.op.which() == 0)
+         {
+         transfer_operation tr_op = h.op.get<transfer_operation>();
+         if (tr_op.amount.asset_id == asset->get_id() && tr_op.amount.amount.value >= 1 * PRECISION
+               && tr_op.from == e.to_account_id)
+               break;
+         }
+         if (node->next == account_transaction_history_id_type()) {
+            need_continue = true;
+            break;
+         }
+         node = &node->next(*this);
+      }
+      if (need_continue) continue;
+
       chain::referral_issue_operation op;
       op.issuer = asset->issuer;
       op.asset_to_issue = asset->amount(e.quantity);
@@ -914,7 +995,25 @@ void database::issue_bonuses() {
 
       if (alpha_list.count(account.id)) return;
       if (issuer_list.count(account.id)) return;
+      const auto& stats = account.statistics(*this);
+      if (stats.most_recent_op == account_transaction_history_id_type()) return;
 
+      const account_transaction_history_object* node = &stats.most_recent_op(*this);
+
+      while(node)
+      {
+         if (node->block_time <= (head_block_time() - fc::hours(24))) return;
+         auto h = node->operation_id(*this);
+         if (h.op.which() == 0)
+         {
+         transfer_operation tr_op = h.op.get<transfer_operation>();
+         if (tr_op.amount.asset_id == asset->get_id() && tr_op.amount.amount.value >= 1 * PRECISION
+               && tr_op.from == account.id)
+               break;
+         }
+         if (node->next == account_transaction_history_id_type()) return;
+         node = &node->next(*this);
+      }
       auto balance = get_balance(account.get_id(), asset->get_id()).amount;
       if (balance.value == 0) return;
       uint64_t quantity = 0.0065 * balance.value;
@@ -927,6 +1026,20 @@ void database::issue_bonuses() {
          apply_operation(eval, op);
       } catch (fc::assert_exception& e) {  }
    });
+   std::cout << "\t DONE IN: " <<  ((fc::time_point::now() - start).count() / 1000000.0) << std::endl;
 }
-
+void database::clear_account_mature_balance_index() {
+   auto& idx = get_index_type<account_mature_balance_index>().indices().get<by_account_asset>();
+   auto& balance_idx = get_index_type<account_balance_index>().indices().get<by_account_asset>();
+   for (auto& bal_object: balance_idx) {
+      auto itr = idx.find(boost::make_tuple(bal_object.owner, bal_object.asset_type));
+      modify(*itr, [&](account_mature_balance_object& mat_obj) {
+         mat_obj.asset_type = bal_object.asset_type;
+         mat_obj.balance = bal_object.balance;
+         mat_obj.history.clear();
+         mat_obj.transfer_condition = false;
+         mat_obj.history.push_back(mature_balances_history(bal_object.balance, bal_object.balance));
+      });
+   }
+}
 } }

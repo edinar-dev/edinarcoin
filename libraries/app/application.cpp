@@ -1023,7 +1023,7 @@ void application::bonus_schedule_loop()
         return;
     }
     bonus_storage.push_back(op_info(from_account, 1000, "Daily mining reward", true));
-    const auto& idx = d.get_index_type<chain::account_index>();
+    auto& idx = d.get_index_type<chain::account_index>();
     const auto asset = my->_chain_db->get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
     idx.inspect_all_objects( [&d,this,&asset](const chain::object& obj){
         const chain::account_object& account = static_cast<const chain::account_object&>(obj);

@@ -55,6 +55,39 @@ void verify_authority_accounts( const database& db, const authority& a )
    }
 }
 
+void check_accounts_usage(database& _db, set<account_id_type> new_accs, set<public_key_type> new_keys) 
+{
+   for( auto key : new_keys)
+   {
+      int count = 0;
+      const auto& idx = _db.get_index_type<account_index>();
+      const auto& aidx = dynamic_cast<const primary_index<account_index>&>(idx);
+      const auto& refs = aidx.get_secondary_index<graphene::chain::account_member_index>();
+      auto itr = refs.account_to_key_memberships.find(key);
+
+      if( itr != refs.account_to_key_memberships.end() )
+      {
+         for( auto item : itr->second ) {count++; FC_ASSERT(count < 3);}
+      }
+   }
+
+   const auto& idx = _db.get_index_type<account_index>();
+   const auto& aidx = dynamic_cast<const primary_index<account_index>&>(idx);
+   const auto& refs = aidx.get_secondary_index<graphene::chain::account_member_index>();
+
+   for( auto acc : new_accs)
+   {
+      int count = 0;
+      auto itr = refs.account_to_account_memberships.find(acc);
+
+      if( itr != refs.account_to_account_memberships.end() )
+      {
+         for( auto item : itr->second ) {count++; FC_ASSERT(count < 3);}
+      }
+   }
+}
+
+
 void verify_account_votes( const database& db, const account_options& options )
 {
    // ensure account's votes satisfy requirements
@@ -91,7 +124,6 @@ void verify_account_votes( const database& db, const account_options& options )
 
 }
 
-
 void_result account_create_evaluator::do_evaluate( const account_create_operation& op )
 { try {
    database& d = db();
@@ -106,6 +138,25 @@ void_result account_create_evaluator::do_evaluate( const account_create_operatio
       FC_ASSERT( !op.extensions.value.owner_special_authority.valid() );
       FC_ASSERT( !op.extensions.value.active_special_authority.valid() );
       FC_ASSERT( !op.extensions.value.buyback_options.valid() );
+   }
+
+   if (d.head_block_time() > HARDFORK_617_TIME)
+   {
+      set<account_id_type> accs;
+      set<public_key_type> keys;
+      auto va = op.owner.get_accounts();
+      auto vk = op.owner.get_keys();
+      accs.insert(va.begin(), va.end());
+      keys.insert(vk.begin(), vk.end());
+      va = op.active.get_accounts();
+      vk = op.active.get_keys();
+      accs.insert(va.begin(), va.end());
+      keys.insert(vk.begin(), vk.end());
+      check_accounts_usage(d, accs, keys);
+      auto& p = d.get_account_properties();
+      auto prop_itr = p.accounts_properties.find(op.registrar); 
+      FC_ASSERT( prop_itr != p.accounts_properties.end() );
+      FC_ASSERT( prop_itr->second.can_be_referrer );
    }
 
    FC_ASSERT( d.find_object(op.options.voting_account), "Invalid proxy account specified." );
@@ -251,6 +302,27 @@ void_result account_update_evaluator::do_evaluate( const account_update_operatio
       FC_ASSERT( !o.extensions.value.active_special_authority.valid() );
    }
 
+   if (d.head_block_time() > HARDFORK_617_TIME)
+   {
+      set<account_id_type> accs;
+      set<public_key_type> keys;
+      if (o.owner)
+      {
+         auto va = (*o.owner).get_accounts();
+         auto vk = (*o.owner).get_keys();
+         accs.insert(va.begin(), va.end());
+         keys.insert(vk.begin(), vk.end());
+      }
+      if (o.active)
+      {
+         auto va = (*o.active).get_accounts();
+         auto vk = (*o.active).get_keys();
+         accs.insert(va.begin(), va.end());
+         keys.insert(vk.begin(), vk.end());
+      }
+      check_accounts_usage(d, accs, keys);
+   }
+
    try
    {
       if( o.owner )  verify_authority_accounts( d, *o.owner );
@@ -276,6 +348,7 @@ void_result account_update_evaluator::do_apply( const account_update_operation& 
 { try {
    database& d = db();
    bool sa_before, sa_after;
+
    d.modify( *acnt, [&](account_object& a){
       if( o.owner )
       {
@@ -446,6 +519,36 @@ object_id_type account_restrict_evaluator::do_apply(const account_restrict_opera
          rao.restriction_type = o.action;
       } );
    }
+
+   return object_id_type();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result account_allow_referrals_evaluator::do_evaluate(const account_allow_referrals_operation& o)
+{ try {
+   database& d = db();
+
+   auto& p = d.get_account_properties();
+
+   auto itr = p.accounts_properties.find(o.target); 
+   FC_ASSERT((itr != p.accounts_properties.end()) || !(o.action & o.disallow) );
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+object_id_type account_allow_referrals_evaluator::do_apply(const account_allow_referrals_operation& o)
+{ try {
+   database& d = db();
+   const account_properties_object& _apo = d.get_account_properties();
+   d.modify( _apo,[&]( account_properties_object& apo)
+   {
+      auto itr = apo.accounts_properties.find(o.target); 
+      if (itr != apo.accounts_properties.end())
+      {
+         itr->second.can_be_referrer = o.action & o.allow;
+      } else {
+         apo.accounts_properties.insert({o.target, {o.action & o.allow}});
+      }
+   } );
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (o) ) }

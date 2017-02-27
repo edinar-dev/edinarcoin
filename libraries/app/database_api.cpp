@@ -1955,7 +1955,7 @@ ref_info database_api_impl::get_referrals_by_id( optional<account_object> accoun
     auto asset = _db.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
     auto& bal_idx = _db.get_index_type<account_balance_index>();
     referral_tree rtree( idx, bal_idx, asset->id, account->id );
-    rtree.form();
+    rtree.form_old();
     leaf_info root = *rtree.referral_map.find(account->id)->second;
     ref_info result( root, account->name );
     for (child_balance e: root.child_balances) {
@@ -2058,8 +2058,8 @@ vector<SimpleUnit> database_api_impl::get_accounts_info(vector<optional<account_
       auto asset = _db.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
       auto& bal_idx = _db.get_index_type<account_balance_index>();
       referral_set.push_back(referral_tree( db_idx, bal_idx, asset->id, acc_obj.get_id() ));
-      referral_set.back().form();
-      referral_set.back().scan();
+      referral_set.back().form_old();
+      referral_set.back().scan_old();
       ret_unit.balance =      referral_set.back().root.node->data.balance;
       ret_unit.id =           referral_set.back().root.node->data.account_id;
       ret_unit.name =         acc_obj.name;
@@ -2091,8 +2091,8 @@ fc::variant_object database_api_impl::get_user_count_by_ranks() const
    auto asset = _db.get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
    auto& bal_idx = _db.get_index_type<account_balance_index>();
    referral_tree rtree( idx, bal_idx, asset->id );
-   rtree.form();
-   auto refbonuses = rtree.scan();
+   rtree.form_old();
+   auto refbonuses = rtree.scan_old();
    for (auto& elem: rtree.tree_data) {
       if (!elem.rank.empty())
          mapres[elem.rank]++;

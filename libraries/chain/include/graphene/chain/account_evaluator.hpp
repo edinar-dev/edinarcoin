@@ -81,4 +81,14 @@ public:
    const restricted_account_object* restricted_account = nullptr;
 };
 
+class account_allow_referrals_evaluator : public evaluator<account_allow_referrals_evaluator>
+{
+public:
+   typedef account_allow_referrals_operation operation_type;
+
+   void_result do_evaluate( const account_allow_referrals_operation& o);
+   object_id_type do_apply( const account_allow_referrals_operation& o);
+
+};
+
 } } // graphene::chain

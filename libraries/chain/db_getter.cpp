@@ -42,6 +42,11 @@ const global_property_object& database::get_global_properties()const
    return get( global_property_id_type() );
 }
 
+const account_properties_object& database::get_account_properties()const
+{
+   return get( account_properties_id_type() );
+}
+
 const chain_property_object& database::get_chain_properties()const
 {
    return get( chain_property_id_type() );

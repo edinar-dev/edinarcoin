@@ -26,7 +26,7 @@
 #include <graphene/chain/database.hpp>
 #include <graphene/chain/hardfork.hpp>
 #include <fc/uint128.hpp>
-
+#include <iostream>
 namespace graphene { namespace chain {
 
 share_type cut_fee(share_type a, uint16_t p)
@@ -46,6 +46,39 @@ void account_balance_object::adjust_balance(const asset& delta)
 {
    assert(delta.asset_id == asset_type);
    balance += delta.amount;
+}
+
+void account_mature_balance_object::adjust_balance(const asset& delta, const asset& real_balance, const uint8_t precision)
+{
+   assert(delta.asset_id == asset_type);
+   int64_t value = delta.amount.value;
+   if (value < 0) {
+      if (value <= -asset::scaled_precision(precision)) {
+          transfer_condition = true;
+      } 
+      while (value < 0) {
+         auto& back = history.back();
+         int64_t coins_to_remove = 0;
+         if ( value + back.real_balance > 0) {
+            double part_to_take = - value / (double)back.real_balance.value;
+           
+            if (part_to_take > 1) part_to_take = 1;
+            coins_to_remove += back.balance.value * part_to_take;
+            value += back.real_balance.value * part_to_take;
+            back.real_balance -= back.real_balance * part_to_take;
+            back.balance -= back.balance * part_to_take;
+            if (back.real_balance == 0) history.erase(--history.end());
+         } else {
+            coins_to_remove += back.balance.value;
+            value += back.real_balance.value;
+            history.erase(--history.end());
+         }
+         balance -= coins_to_remove;
+      }
+   } else {
+      balance += delta.amount;
+      history.push_back(mature_balances_history(real_balance.amount, delta.amount));
+   }
 }
 
 void account_statistics_object::process_fees(const account_object& a, database& d) const
