@@ -66,11 +66,10 @@ namespace bpo = boost::program_options;
 int main( int argc, char** argv )
 {
    try {
-
       boost::program_options::options_description opts;
          opts.add_options()
          ("help,h", "Print this help message and exit.")
-         ("server-rpc-endpoint,s", bpo::value<string>()->implicit_value("ws://127.0.0.1:8090"), "Server websocket RPC endpoint")
+         ("server-rpc-endpoint,s", bpo::value<string>()->implicit_value("wss://blockchain-trusted.edinarcoin.com"), "Server websocket RPC endpoint")
          ("server-rpc-user,u", bpo::value<string>(), "Server Username")
          ("server-rpc-password,p", bpo::value<string>(), "Server Password")
          ("rpc-endpoint,r", bpo::value<string>()->implicit_value("127.0.0.1:8091"), "Endpoint for wallet websocket RPC to listen on")
@@ -79,7 +78,9 @@ int main( int argc, char** argv )
          ("rpc-http-endpoint,H", bpo::value<string>()->implicit_value("127.0.0.1:8093"), "Endpoint for wallet HTTP RPC to listen on")
          ("daemon,d", "Run the wallet in daemon mode" )
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load")
-         ("chain-id", bpo::value<string>(), "chain ID to connect to");
+         ("chain-id", bpo::value<string>(), "chain ID to connect to")
+         ("delayed",  bpo::bool_switch(), "Connect to delayed node if specified")
+         ;
 
       bpo::variables_map options;
 
@@ -155,14 +156,17 @@ int main( int argc, char** argv )
          }
          else
          {
-            wdata.chain_id = graphene::egenesis::get_egenesis_chain_id();
+            wdata.chain_id = chain_id_type("979b29912e5546dbf47604692aafc94519f486c56221a5705f0c7f5f294df126");
             std::cout << "Starting a new wallet with chain ID " << wdata.chain_id.str() << " (from egenesis)\n";
          }
       }
 
       // but allow CLI to override
-      if( options.count("server-rpc-endpoint") )
+      if (options.count("delayed") && options.at("delayed").as<bool>())
+         wdata.ws_server = "wss://blockchain-delayed.edinarcoin.com";
+      else if (options.count("server-rpc-endpoint"))
          wdata.ws_server = options.at("server-rpc-endpoint").as<std::string>();
+         
       if( options.count("server-rpc-user") )
          wdata.ws_user = options.at("server-rpc-user").as<std::string>();
       if( options.count("server-rpc-password") )
@@ -206,19 +210,21 @@ int main( int argc, char** argv )
       }));
 
       auto _websocket_server = std::make_shared<fc::http::websocket_server>();
+      std::string rpc_endpoint = "127.0.0.1:8081";
       if( options.count("rpc-endpoint") )
       {
-         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
-            std::cout << "here... \n";
-            wlog("." );
-            auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-            wsc->register_api(wapi);
-            c->set_session_data( wsc );
-         });
-         ilog( "Listening for incoming RPC requests on ${p}", ("p", options.at("rpc-endpoint").as<string>() ));
-         _websocket_server->listen( fc::ip::endpoint::from_string(options.at("rpc-endpoint").as<string>()) );
-         _websocket_server->start_accept();
+         rpc_endpoint = options.at("rpc-endpoint").as<string>();
       }
+      _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
+        std::cout << "here... \n";
+        wlog("." );
+        auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
+        wsc->register_api(wapi);
+        c->set_session_data( wsc );
+      });
+      ilog( "Listening for incoming RPC requests on ${p}", ("p", rpc_endpoint ));
+      _websocket_server->listen( fc::ip::endpoint::from_string(rpc_endpoint) );
+      _websocket_server->start_accept();
 
       string cert_pem = "server.pem";
       if( options.count( "rpc-tls-certificate" ) )
