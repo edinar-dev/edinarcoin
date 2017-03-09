@@ -62,6 +62,7 @@ namespace graphene { namespace chain {
          uint16_t          op_in_trx = 0;
          /** any virtual operations implied by operation in block */
          uint16_t          virtual_op = 0;
+         fc::time_point_sec                       block_time;
    };
 
    /**
@@ -103,6 +104,7 @@ namespace graphene { namespace chain {
    struct by_id;
 struct by_seq;
 struct by_op;
+struct by_time;
 typedef multi_index_container<
    account_transaction_history_object,
    indexed_by<
@@ -124,11 +126,26 @@ typedef multi_index_container<
 
 typedef generic_index<account_transaction_history_object, account_transaction_history_multi_index_type> account_transaction_history_index;
 
+typedef multi_index_container<
+   operation_history_object,
+   indexed_by<
+      ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+      ordered_non_unique< tag<by_time>,
+            composite_key< operation_history_object,
+            member< operation_history_object, fc::time_point_sec, &operation_history_object::block_time>
+         >
+      >
+
+   >
+> operation_history_multi_index_type;
+
+typedef generic_index<operation_history_object, operation_history_multi_index_type> operation_history_index;
+
    
 } } // graphene::chain
 
 FC_REFLECT_DERIVED( graphene::chain::operation_history_object, (graphene::chain::object),
-                    (op)(result)(block_num)(trx_in_block)(op_in_trx)(virtual_op) )
+                    (op)(result)(block_num)(trx_in_block)(op_in_trx)(virtual_op)(block_time) )
 
 FC_REFLECT_DERIVED( graphene::chain::account_transaction_history_object, (graphene::chain::object),
                     (account)(operation_id)(sequence)(next)(block_time) )

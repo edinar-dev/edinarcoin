@@ -933,7 +933,9 @@ void application::initialize(const fc::path& data_dir, const boost::program_opti
 {
    my->_data_dir = data_dir;
    my->_options = &options;
-
+   if (options.count("fast") && options.at("fast").as<bool>()) {
+       my->_chain_db->work_as_fast_node();
+   }
    if( options.count("create-genesis-json") )
    {
       fc::path genesis_out = options.at("create-genesis-json").as<boost::filesystem::path>();

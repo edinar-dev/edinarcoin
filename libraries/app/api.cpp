@@ -416,8 +416,11 @@ namespace graphene { namespace app {
           
        while(node && node->operation_id.instance.value > stop.instance.value && result.size() < limit)
        {
-          if( node->operation_id.instance.value <= start.instance.value )
-             result.push_back( node->operation_id(db) );
+          if( node->operation_id.instance.value <= start.instance.value ) {
+            try {
+              result.push_back( node->operation_id(db) );
+            } catch(fc::exception e) { break; }
+          }
           if( node->next == account_transaction_history_id_type() )
              node = nullptr;
           else node = &node->next(db);
