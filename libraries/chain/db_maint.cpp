@@ -890,8 +890,8 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    }
    if (head_block_time() != HARDFORK_616_MAINTENANCE_CHANGE_TIME)
       clear_account_mature_balance_index();  
-   if (is_fast_node) {
-      auto history_index = get_index_type<operation_history_index>().indices().get<by_time>().lower_bound(head_block_time() - fc::days(1));
+   if (history_size) {
+      auto history_index = get_index_type<operation_history_index>().indices().get<by_time>().lower_bound(head_block_time() - fc::days(history_size));
       auto begin_iter = get_index_type<operation_history_index>().indices().get<by_time>().begin();
       while(begin_iter != history_index)
       {

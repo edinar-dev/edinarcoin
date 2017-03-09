@@ -114,7 +114,7 @@ namespace graphene { namespace chain {
           */
          void wipe(const fc::path& data_dir, bool include_blocks);
          void close(bool rewind = true);
-         void work_as_fast_node() { is_fast_node = true; }
+         void set_history_size(int _history_size) { history_size = _history_size; }
          //////////////////// db_block.cpp ////////////////////
 
          /**
@@ -468,7 +468,7 @@ namespace graphene { namespace chain {
          ///@}
          ///@}
 
-         bool is_fast_node = false;
+         int history_size = 0;
 
          vector< processed_transaction >        _pending_tx;
          fork_database                          _fork_db;

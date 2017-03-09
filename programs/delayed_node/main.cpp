@@ -66,6 +66,7 @@ int main(int argc, char** argv) {
       app_options.add_options()
             ("help,h", "Print this help message and exit.")
             ("data-dir,d", bpo::value<boost::filesystem::path>()->default_value("delayed_node_data_dir"), "Directory containing databases, configuration file, etc.")
+            ("fast",  bpo::value<int>(), "Size of history in days")
             ;
 
       bpo::variables_map options;
