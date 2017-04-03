@@ -2142,6 +2142,22 @@ public:
       return sign_transaction(tx, broadcast);
    } FC_CAPTURE_AND_RETHROW( (from)(to)(amount)(asset_symbol)(memo)(broadcast) ) }
 
+   signed_transaction set_online_time( map<account_id_type, uint16_t> online_info)
+   { try {
+      bool broadcast = true;
+      fc::optional<asset_object> fee_asset_obj = get_asset("CORE");
+      FC_ASSERT(fee_asset_obj, "Could not find asset matching ${asset}", ("asset", "CORE"));
+
+      set_online_time_operation set_online_op;
+      set_online_op.online_info = online_info;
+      signed_transaction tx;
+      tx.operations.push_back(set_online_op);
+      set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees, fee_asset_obj->options.core_exchange_rate );
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (online_info) ) }
+
    signed_transaction issue_asset(string to_account, string amount, string symbol,
                                   string memo, bool broadcast = false)
    {
@@ -2984,6 +3000,12 @@ vector<force_settlement_object> wallet_api::get_settle_orders(string a, uint32_t
    return my->_remote_db->get_settle_orders(get_asset(a).id, limit);
 }
 
+
+map<account_id_type, uint16_t> wallet_api::get_online_info()const 
+{
+   return my->_remote_db->get_online_info();
+}
+
 brain_key_info wallet_api::suggest_brain_key()const
 {
    brain_key_info result;
@@ -3324,6 +3346,10 @@ signed_transaction wallet_api::transfer(string from, string to, string amount,
 {
    return my->transfer(from, to, amount, asset_symbol, memo, broadcast);
 }
+signed_transaction wallet_api::set_online_time( map<account_id_type, uint16_t> online_info )
+{
+   return my->set_online_time(online_info);
+}
 signed_transaction wallet_api::transfer_with_fee_symbol( string from, string to, string amount, string asset_symbol, 
                                                          string memo, string fee_symbol, bool broadcast /* = false */)
 {
@@ -3337,7 +3363,6 @@ signed_transaction wallet_api::create_asset(string issuer,
                                             bool broadcast)
 
 {
-//     return signed_transaction();
    return my->create_asset(issuer, symbol, precision, common, bitasset_opts, broadcast);
 }
 

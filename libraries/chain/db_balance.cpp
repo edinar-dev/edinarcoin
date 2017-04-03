@@ -42,9 +42,10 @@ asset database::get_balance(account_id_type owner, asset_id_type asset_id) const
 
 asset database::get_mature_balance(account_id_type owner, asset_id_type asset_id) const
 {
+//    auto& owner_account = owner(*this);
    auto& index = get_index_type<account_mature_balance_index>().indices().get<by_account_asset>();
    auto itr = index.find(boost::make_tuple(owner, asset_id));
-   if( itr == index.end() || !itr->transfer_condition )
+   if( itr == index.end() || (!itr->transfer_condition)) //  && !owner_account.is_market))
       return asset(0, asset_id);
    return itr->get_balance();
 }

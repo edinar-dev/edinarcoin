@@ -153,8 +153,17 @@ namespace graphene { namespace chain {
 
             account_id_type account;
             optional<uint8_t> restriction_type = 0x6;
-    };
+    };    
+    
+    class accounts_online_object : public abstract_object<accounts_online_object>
+    {
+        public:
+            static const uint8_t space_id = implementation_ids;
+            static const uint8_t type_id  = impl_accounts_online_object_type;
 
+            map<account_id_type, uint16_t>  online_info;
+            accounts_online_id_type get_id() { return id; }
+    };
    /**
     * @brief This class represents an account on the object graph
     * @ingroup object
@@ -196,7 +205,7 @@ namespace graphene { namespace chain {
 
          /// The account's name. This name must be unique among all account names on the graph. May not be empty.
          string name;
-
+         bool is_market = false;
          /**
           * The owner authority represents absolute control over the account. Usually the keys in this authority will
           * be kept in cold storage, as they should not be needed very often and compromise of these keys constitutes
@@ -537,6 +546,10 @@ FC_REFLECT_DERIVED( graphene::chain::restricted_account_object,
             (graphene::db::object),
             (account)(restriction_type));
 
+FC_REFLECT_DERIVED( graphene::chain::accounts_online_object,
+            (graphene::db::object),
+            (online_info));
+
 FC_REFLECT_DERIVED( graphene::chain::account_object,
                     (graphene::db::object),
                     (membership_expiration_date)(registrar)(referrer)(lifetime_referrer)
@@ -547,6 +560,7 @@ FC_REFLECT_DERIVED( graphene::chain::account_object,
                     (owner_special_authority)(active_special_authority)
                     (top_n_control_flags)
                     (allowed_assets)
+                    (is_market)
                     );
 
 FC_REFLECT_DERIVED( graphene::chain::account_balance_object,

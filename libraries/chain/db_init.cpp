@@ -177,6 +177,7 @@ void database::initialize_evaluators()
    register_evaluator<asset_claim_fees_evaluator>();
    register_evaluator<account_restrict_evaluator>();
    register_evaluator<account_allow_referrals_evaluator>();
+   register_evaluator<set_online_time_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -224,7 +225,8 @@ void database::initialize_indexes()
    add_index< primary_index< buyback_index                                > >();
 
    add_index< primary_index< simple_index< fba_accumulator_object       > > >();
-   add_index< primary_index<simple_index<account_properties_object  >> >();
+   add_index< primary_index<simple_index<account_properties_object      > > >();
+   add_index< primary_index<simple_index<accounts_online_object         > > >();
 }
 
 void database::init_genesis(const genesis_state_type& genesis_state)
@@ -411,6 +413,9 @@ void database::init_genesis(const genesis_state_type& genesis_state)
    });
 
    create<account_properties_object>([&](account_properties_object& p) {
+   });
+   create<accounts_online_object>([&](accounts_online_object& p) {
+       p.online_info = map<account_id_type, uint16_t>();
    });
 
    FC_ASSERT( (genesis_state.immutable_parameters.min_witness_count & 1) == 1, "min_witness_count must be odd" );

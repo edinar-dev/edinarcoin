@@ -71,6 +71,7 @@ namespace graphene { namespace chain {
          optional< special_authority > owner_special_authority;
          optional< special_authority > active_special_authority;
          optional< buyback_account_options > buyback_options;
+         optional< bool >              is_market; 
       };
 
       struct fee_parameters_type
@@ -243,6 +244,19 @@ namespace graphene { namespace chain {
         void validate()const { FC_ASSERT( target != account_id_type() ); FC_ASSERT(action); FC_ASSERT(action == 0x1 || action == 0x2);}
     };
 
+    struct set_online_time_operation : public base_operation
+    {
+        struct fee_parameters_type { uint64_t fee = 0; };
+
+        
+        asset                           fee;
+        map<account_id_type, uint16_t>  online_info;
+        extensions_type                 extensions;
+        
+        account_id_type fee_payer( )const { return account_id_type(18); }
+        void            validate( )const { };
+    };
+
    /**
     * @brief Manage an account's membership status
     * @ingroup operations
@@ -316,7 +330,7 @@ FC_REFLECT_TYPENAME( graphene::chain::account_allow_referrals_operation::account
 FC_REFLECT_ENUM( graphene::chain::account_allow_referrals_operation::account_action,
                 (allow)(disallow))
 
-FC_REFLECT(graphene::chain::account_create_operation::ext, (null_ext)(owner_special_authority)(active_special_authority)(buyback_options) )
+FC_REFLECT(graphene::chain::account_create_operation::ext, (null_ext)(owner_special_authority)(active_special_authority)(buyback_options)(is_market) )
 FC_REFLECT( graphene::chain::account_create_operation,
             (fee)(registrar)
             (referrer)(referrer_percent)
@@ -334,12 +348,14 @@ FC_REFLECT( graphene::chain::account_upgrade_operation,
 FC_REFLECT( graphene::chain::account_whitelist_operation, (fee)(authorizing_account)(account_to_list)(new_listing)(extensions))
         
 FC_REFLECT( graphene::chain::account_restrict_operation, (fee)(target)(action)(extensions))
-FC_REFLECT( graphene::chain::account_allow_referrals_operation, (fee)(target)(action)(extensions))         
+FC_REFLECT( graphene::chain::account_allow_referrals_operation, (fee)(target)(action)(extensions))      
+FC_REFLECT( graphene::chain::set_online_time_operation, (fee)(online_info)(extensions))         
 
 FC_REFLECT( graphene::chain::account_create_operation::fee_parameters_type, (basic_fee)(premium_fee)(price_per_kbyte) )
 FC_REFLECT( graphene::chain::account_whitelist_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::account_restrict_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::account_allow_referrals_operation::fee_parameters_type, (fee) )
+FC_REFLECT( graphene::chain::set_online_time_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::account_update_operation::fee_parameters_type, (fee)(price_per_kbyte) )
 FC_REFLECT( graphene::chain::account_upgrade_operation::fee_parameters_type, (membership_annual_fee)(membership_lifetime_fee) )
 FC_REFLECT( graphene::chain::account_transfer_operation::fee_parameters_type, (fee) )

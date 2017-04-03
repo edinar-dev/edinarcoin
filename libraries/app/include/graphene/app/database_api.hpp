@@ -378,6 +378,8 @@ class database_api
        */
       vector<force_settlement_object> get_settle_orders(asset_id_type a, uint32_t limit)const;
 
+      map<account_id_type, uint16_t> get_online_info()const;
+
       /**
        *  @return all open margin positions for a given account id.
        */
@@ -654,6 +656,7 @@ FC_API(graphene::app::database_api,
    (get_limit_orders)
    (get_call_orders)
    (get_settle_orders)
+   (get_online_info)
    (get_margin_positions)
    (subscribe_to_market)
    (unsubscribe_from_market)

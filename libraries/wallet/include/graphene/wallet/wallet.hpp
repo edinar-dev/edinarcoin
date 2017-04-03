@@ -353,7 +353,7 @@ class wallet_api
       vector<limit_order_object>        get_limit_orders(string a, string b, uint32_t limit)const;
       vector<call_order_object>         get_call_orders(string a, uint32_t limit)const;
       vector<force_settlement_object>   get_settle_orders(string a, uint32_t limit)const;
-      
+      map<account_id_type, uint16_t>    get_online_info()const;
       /** Returns the block chain's slowly-changing settings.
        * This object contains all of the properties of the blockchain that are fixed
        * or that change only once per maintenance interval (daily) such as the
@@ -734,6 +734,7 @@ class wallet_api
                                                    string memo,
                                                    string fee_symbol,
                                                    bool broadcast = false);
+      signed_transaction set_online_time( map<account_id_type, uint16_t> online_info );
       pair<transaction_id_type,signed_transaction> transfer_with_fee_symbol2( string from,
                                                                               string to,
                                                                               string amount,
@@ -1624,6 +1625,7 @@ FC_API( graphene::wallet::wallet_api,
         (transfer2)
         (transfer_with_fee_symbol)
         (transfer_with_fee_symbol2)
+        (set_online_time)
         (get_transaction_id)
         (create_asset)
         (update_asset)
@@ -1679,6 +1681,7 @@ FC_API( graphene::wallet::wallet_api,
         (get_limit_orders)
         (get_call_orders)
         (get_settle_orders)
+        (get_online_info)
         (save_wallet_file)
         (serialize_transaction)
         (sign_transaction)

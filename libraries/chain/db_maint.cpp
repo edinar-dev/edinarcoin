@@ -898,6 +898,11 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
             remove(*begin_iter++);   
       }
    }
+   if (head_block_time() > HARDFORK_618_TIME) {
+      modify(get(accounts_online_id_type()), [&](accounts_online_object& o) {
+         o.online_info = map<account_id_type, uint16_t>();
+      });
+   }
 }
 
 void database::issue_bonuses() {
@@ -912,20 +917,33 @@ void database::issue_bonuses() {
    auto& issuer_list = asset->issuer(*this).blacklisted_accounts;
    auto& alpha_list = account_id_type(18)(*this).blacklisted_accounts;
    auto ops = rtree.scan();
-   idx.inspect_all_objects( [&](const chain::object& obj){
+   int minutes_in_1_day = 1440;
+   auto online_info = get( accounts_online_id_type() ).online_info;
+   double default_online_part = online_info.size() ? 0 : 1;
+   idx.inspect_all_objects( [&](const chain::object& obj) {
       const chain::account_object& account = static_cast<const chain::account_object&>(obj);
-      
       auto balance = get_mature_balance(account.get_id(), asset->get_id()).amount;
       uint64_t quantity = 0.0065 * balance.value;
       if (quantity < 1) return;
-
+      
       if ( alpha_list.count(account.get_id()) ) return;
       if ( issuer_list.count(account.get_id()) ) return;
+      
+      double online_part = default_online_part;
+      if (head_block_time() > HARDFORK_618_TIME && default_online_part == 0) {
+         try {
+            online_part = online_info.at(account.get_id()) / (double)minutes_in_1_day;
+         } catch(...) {}
+      }
+      quantity *= online_part;
+      if (quantity < 1) return;
+      
       chain::daily_issue_operation op;
       op.issuer = asset->issuer;
       op.asset_to_issue = asset->amount(quantity);
       op.issue_to_account = account.id;
       try {
+         op.validate();
          apply_operation(eval, op);
       } catch (fc::assert_exception& e) {  }
 
@@ -933,11 +951,12 @@ void database::issue_bonuses() {
       if (e == ops.end()) return;
       chain::referral_issue_operation r_op;
       r_op.issuer = asset->issuer;
-      r_op.asset_to_issue = asset->amount(e->quantity);
+      r_op.asset_to_issue = asset->amount(e->quantity * online_part);
       r_op.issue_to_account = e->to_account_id;
       r_op.history = e->history;
       r_op.rank = e->rank;
       try {
+         r_op.validate();
          apply_operation(eval, r_op);
       } catch (fc::assert_exception& e) { }
    }); 

@@ -158,7 +158,8 @@ namespace graphene { namespace chain {
       impl_buyback_object_type,
       impl_fba_accumulator_object_type,
       impl_account_mature_balance_object_type,
-      impl_account_properties_object_type
+      impl_account_properties_object_type,
+      impl_accounts_online_object_type
    };
 
    //typedef fc::unsigned_int            object_id_type;
@@ -195,7 +196,7 @@ namespace graphene { namespace chain {
    typedef object_id< protocol_ids, vesting_balance_object_type,    vesting_balance_object>       vesting_balance_id_type;
    typedef object_id< protocol_ids, worker_object_type,             worker_object>                worker_id_type;
    typedef object_id< protocol_ids, balance_object_type,            balance_object>               balance_id_type;
-   typedef object_id< protocol_ids, restricted_account_object_type,     restricted_account_object>        banned_account_id_type;
+   typedef object_id< protocol_ids, restricted_account_object_type, restricted_account_object>    banned_account_id_type;
 
    // implementation types
    class global_property_object;
@@ -215,6 +216,7 @@ namespace graphene { namespace chain {
    class buyback_object;
    class fba_accumulator_object;
    class account_properties_object;
+   class accounts_online_object;
 
    typedef object_id< implementation_ids, impl_global_property_object_type,  global_property_object>                    global_property_id_type;
    typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,  dynamic_global_property_object>    dynamic_global_property_id_type;
@@ -239,6 +241,7 @@ namespace graphene { namespace chain {
    typedef object_id< implementation_ids, impl_buyback_object_type, buyback_object >                                    buyback_id_type;
    typedef object_id< implementation_ids, impl_fba_accumulator_object_type, fba_accumulator_object >                    fba_accumulator_id_type;
    typedef object_id< implementation_ids, impl_account_properties_object_type, account_properties_object >              account_properties_id_type;
+   typedef object_id< implementation_ids, impl_accounts_online_object_type,    accounts_online_object>                  accounts_online_id_type;
 
    typedef fc::array<char, GRAPHENE_MAX_ASSET_SYMBOL_LENGTH>    symbol_type;
    typedef fc::ripemd160                                        block_id_type;
@@ -374,6 +377,7 @@ FC_REFLECT_ENUM( graphene::chain::impl_object_type,
                  (impl_fba_accumulator_object_type)
                  (impl_account_mature_balance_object_type)
                  (impl_account_properties_object_type)
+                 (impl_accounts_online_object_type)
                )
 
 FC_REFLECT_TYPENAME( graphene::chain::share_type )
@@ -407,6 +411,7 @@ FC_REFLECT_TYPENAME( graphene::chain::special_authority_id_type )
 FC_REFLECT_TYPENAME( graphene::chain::buyback_id_type )
 FC_REFLECT_TYPENAME( graphene::chain::fba_accumulator_id_type )
 FC_REFLECT_TYPENAME( graphene::chain::account_properties_id_type )
+FC_REFLECT_TYPENAME( graphene::chain::accounts_online_id_type )
 
 FC_REFLECT( graphene::chain::void_t, )
 

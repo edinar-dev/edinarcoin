@@ -97,7 +97,8 @@ namespace graphene { namespace chain {
             referral_issue_operation,
             edc_asset_fund_fee_pool_operation,
             account_restrict_operation,
-            account_allow_referrals_operation
+            account_allow_referrals_operation,
+            set_online_time_operation
          > operation;
 
    /// @} // operations group

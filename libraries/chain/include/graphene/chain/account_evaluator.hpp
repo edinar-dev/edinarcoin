@@ -91,4 +91,14 @@ public:
 
 };
 
+class set_online_time_evaluator : public evaluator<set_online_time_evaluator>
+{
+public:
+   typedef set_online_time_operation operation_type;
+
+   void_result do_evaluate( const set_online_time_operation& o);
+   void_result do_apply( const set_online_time_operation& o);
+
+};
+
 } } // graphene::chain

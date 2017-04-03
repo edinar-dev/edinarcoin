@@ -110,6 +110,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       vector<limit_order_object>         get_limit_orders(asset_id_type a, asset_id_type b, uint32_t limit)const;
       vector<call_order_object>          get_call_orders(asset_id_type a, uint32_t limit)const;
       vector<force_settlement_object>    get_settle_orders(asset_id_type a, uint32_t limit)const;
+      map<account_id_type, uint16_t>     get_online_info()const;
       vector<call_order_object>          get_margin_positions( const account_id_type& id )const;
       void subscribe_to_market(std::function<void(const variant&)> callback, asset_id_type a, asset_id_type b);
       void unsubscribe_from_market(asset_id_type a, asset_id_type b);
@@ -961,6 +962,16 @@ vector<call_order_object> database_api_impl::get_call_orders(asset_id_type a, ui
 
    return vector<call_order_object>(call_index.lower_bound(index_price.min()),
                                     call_index.lower_bound(index_price.max()));
+}
+
+map<account_id_type, uint16_t> database_api::get_online_info()const 
+{
+    return my->get_online_info();
+}
+
+map<account_id_type, uint16_t> database_api_impl::get_online_info()const
+{
+    return _db.get(accounts_online_id_type()).online_info;
 }
 
 vector<force_settlement_object> database_api::get_settle_orders(asset_id_type a, uint32_t limit)const

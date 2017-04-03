@@ -34,7 +34,7 @@
 #include <graphene/chain/special_authority.hpp>
 #include <graphene/chain/special_authority_object.hpp>
 #include <graphene/chain/worker_object.hpp>
-
+#include <iostream>
 #include <algorithm>
 
 namespace graphene { namespace chain {
@@ -212,6 +212,8 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
    }
 
    const auto& new_acnt_object = db().create<account_object>( [&]( account_object& obj ){
+         if( o.extensions.value.is_market.valid() ) 
+            obj.is_market = *o.extensions.value.is_market;
          obj.registrar = o.registrar;
          obj.referrer = o.referrer;
          obj.lifetime_referrer = o.referrer(db()).lifetime_referrer;
@@ -551,6 +553,22 @@ object_id_type account_allow_referrals_evaluator::do_apply(const account_allow_r
    } );
 
    return object_id_type();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result set_online_time_evaluator::do_evaluate(const set_online_time_operation& o)
+{ try {
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result set_online_time_evaluator::do_apply(const set_online_time_operation& o)
+{ try {
+   database& d = db();
+   std::cout << "set_online_time_evaluator::do_apply " <<  o.online_info.size() << std::endl;
+   d.modify(d.get(accounts_online_id_type()), [&](accounts_online_object& obj) {
+      obj.online_info = o.online_info;
+   });
+
+   return void_result();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
 } } // graphene::chain
