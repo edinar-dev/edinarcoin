@@ -956,11 +956,12 @@ void database::issue_bonuses() {
       if (head_block_time() > HARDFORK_618_TIME && head_block_time() < HARDFORK_619_TIME && default_online_part == 0) {
          try {
             online_part = online_info.at(account.get_id()) / (double)minutes_in_1_day;
-            quantity *= online_part;
-            if (quantity < 1) return;
          } catch(...) {}
       }
-      
+      if (head_block_time() > HARDFORK_618_TIME && head_block_time() < HARDFORK_619_TIME)
+         quantity *= online_part;
+      if (quantity < 1) return;
+
       chain::daily_issue_operation op;
       op.issuer = asset->issuer;
       op.asset_to_issue = asset->amount(quantity);
