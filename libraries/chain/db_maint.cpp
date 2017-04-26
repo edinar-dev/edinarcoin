@@ -905,12 +905,35 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    }
 }
 
+void database::consider_mining_in_mature_balances() {
+   auto& online_info = get( accounts_online_id_type() ).online_info;
+   if (!online_info.size()) return;
+   const auto& account_idx = get_index_type<chain::account_index>();
+   const auto asset = get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
+   account_idx.inspect_all_objects( [&](const chain::object& obj) {
+      const chain::account_object& account = static_cast<const chain::account_object&>(obj);
+      uint16_t mined_minutes = 0;
+      try {
+         mined_minutes = online_info.at(account.get_id());
+      } catch(...) {}
+      auto balance = get_mature_balance(account.get_id(), asset->get_id()).amount;
+      auto& mat_index = get_index_type<account_mature_balance_index>().indices().get<by_account_asset>();
+      auto mat_itr = mat_index.find(boost::make_tuple(account.get_id(), asset->get_id()));
+      if (mat_itr == mat_index.end()) return;
+      modify(*mat_itr, [mined_minutes](account_mature_balance_object& b) {
+         b.consider_mining(mined_minutes);
+      });
+   });
+}
+
 void database::issue_bonuses() {
    auto start = fc::time_point::now();
    const auto& idx = get_index_type<chain::account_index>();
    const auto asset = get_index_type<asset_index>().indices().get<by_symbol>().find("EDC");
    const auto& bal_idx = get_index_type<account_balance_index>();
    auto& mat_bal_idx = get_index_type<account_mature_balance_index>();
+   if (head_block_time() > HARDFORK_619_TIME)
+      consider_mining_in_mature_balances();
    transaction_evaluation_state eval(this);
    referral_tree rtree( idx, bal_idx, asset->id, account_id_type(), &mat_bal_idx );
    rtree.form();
@@ -928,15 +951,15 @@ void database::issue_bonuses() {
       
       if ( alpha_list.count(account.get_id()) ) return;
       if ( issuer_list.count(account.get_id()) ) return;
-      
+
       double online_part = default_online_part;
-      if (head_block_time() > HARDFORK_618_TIME && default_online_part == 0) {
+      if (head_block_time() > HARDFORK_618_TIME && head_block_time() < HARDFORK_619_TIME && default_online_part == 0) {
          try {
             online_part = online_info.at(account.get_id()) / (double)minutes_in_1_day;
+            quantity *= online_part;
+            if (quantity < 1) return;
          } catch(...) {}
       }
-      quantity *= online_part;
-      if (quantity < 1) return;
       
       chain::daily_issue_operation op;
       op.issuer = asset->issuer;
@@ -951,7 +974,11 @@ void database::issue_bonuses() {
       if (e == ops.end()) return;
       chain::referral_issue_operation r_op;
       r_op.issuer = asset->issuer;
-      r_op.asset_to_issue = asset->amount(e->quantity * online_part);
+      r_op.asset_to_issue = asset->amount(head_block_time() > HARDFORK_618_TIME && head_block_time() < HARDFORK_619_TIME ? 
+                                             e->quantity * online_part 
+                                                : 
+                                             e->quantity
+                                         );
       r_op.issue_to_account = e->to_account_id;
       r_op.history = e->history;
       r_op.rank = e->rank;

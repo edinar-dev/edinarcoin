@@ -70,6 +70,8 @@ database& generic_evaluator::db()const { return trx_state->db(); }
       FC_ASSERT( not_restricted_account( d, *fee_paying_account, directionality_type::payer), "Account ${acct} '${name}' is restricted by committee",
             ("acct", fee_paying_account->id)("name", fee_paying_account->name));
 
+      FC_ASSERT( !fee_paying_account->verification_is_required, "Please contact support");
+
       if( fee_from_account.asset_id == asset_id_type() )
          core_fee_paid = fee_from_account.amount;
       else

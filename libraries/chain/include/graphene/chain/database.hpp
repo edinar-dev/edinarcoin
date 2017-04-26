@@ -456,6 +456,7 @@ namespace graphene { namespace chain {
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
          void issue_bonuses_old();
          void issue_bonuses();
+         void consider_mining_in_mature_balances();
          bool bonus_allowed(account_id_type issue_to_account, asset asset_to_issue, account_id_type issuer);
          void clear_account_mature_balance_index();
          void update_active_witnesses();

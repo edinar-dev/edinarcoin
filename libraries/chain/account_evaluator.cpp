@@ -158,7 +158,7 @@ void_result account_create_evaluator::do_evaluate( const account_create_operatio
       FC_ASSERT( prop_itr != p.accounts_properties.end() );
       FC_ASSERT( prop_itr->second.can_be_referrer );
    }
-
+   
    FC_ASSERT( d.find_object(op.options.voting_account), "Invalid proxy account specified." );
 //   FC_ASSERT( fee_paying_account->is_lifetime_member(), "Only Lifetime members may register an account." );
 //   FC_ASSERT( op.referrer(d).is_member(d.head_block_time()), "The referrer must be either a lifetime or annual subscriber." );
@@ -566,6 +566,24 @@ void_result set_online_time_evaluator::do_apply(const set_online_time_operation&
    std::cout << "set_online_time_evaluator::do_apply " <<  o.online_info.size() << std::endl;
    d.modify(d.get(accounts_online_id_type()), [&](accounts_online_object& obj) {
       obj.online_info = o.online_info;
+   });
+
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result set_verification_is_required_evaluator::do_evaluate(const set_verification_is_required_operation& o)
+{ try {
+   return void_result();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void_result set_verification_is_required_evaluator::do_apply(const set_verification_is_required_operation& o)
+{ try {
+   database& d = db();
+   std::cout << "set_verification_is_required_operation::do_apply " <<  o.target(d).name << " " << o.verification_is_required << std::endl;
+   d.modify(o.target(d), [&](account_object& obj) {
+      std::cout << "check " << obj.name << "    " << obj.verification_is_required << std::endl;
+      obj.verification_is_required = o.verification_is_required;
+      std::cout << "after " << obj.name << "    " << obj.verification_is_required << std::endl;
    });
 
    return void_result();

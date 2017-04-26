@@ -178,6 +178,7 @@ void database::initialize_evaluators()
    register_evaluator<account_restrict_evaluator>();
    register_evaluator<account_allow_referrals_evaluator>();
    register_evaluator<set_online_time_evaluator>();
+   register_evaluator<set_verification_is_required_evaluator>();
 }
 
 void database::initialize_indexes()

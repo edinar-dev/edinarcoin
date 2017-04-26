@@ -143,6 +143,7 @@ namespace graphene { namespace chain {
 
          asset get_balance()const { return asset(balance, asset_type); }
          void  adjust_balance(const asset& delta, const asset& real_balance, const uint8_t precision);
+         void  consider_mining(uint16_t minied_minutes);
    };
 
     class restricted_account_object : public graphene::db::abstract_object<restricted_account_object>
@@ -205,6 +206,9 @@ namespace graphene { namespace chain {
 
          /// The account's name. This name must be unique among all account names on the graph. May not be empty.
          string name;
+
+         bool verification_is_required = false;
+
          bool is_market = false;
          /**
           * The owner authority represents absolute control over the account. Usually the keys in this authority will
@@ -560,7 +564,7 @@ FC_REFLECT_DERIVED( graphene::chain::account_object,
                     (owner_special_authority)(active_special_authority)
                     (top_n_control_flags)
                     (allowed_assets)
-                    (is_market)
+                    (is_market) (verification_is_required)
                     );
 
 FC_REFLECT_DERIVED( graphene::chain::account_balance_object,

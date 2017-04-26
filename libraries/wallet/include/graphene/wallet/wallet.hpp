@@ -734,7 +734,6 @@ class wallet_api
                                                    string memo,
                                                    string fee_symbol,
                                                    bool broadcast = false);
-      signed_transaction set_online_time( map<account_id_type, uint16_t> online_info );
       pair<transaction_id_type,signed_transaction> transfer_with_fee_symbol2( string from,
                                                                               string to,
                                                                               string amount,
@@ -745,6 +744,9 @@ class wallet_api
          auto trx = transfer_with_fee_symbol( from, to, amount, asset_symbol, memo, fee_symbol, true );
          return std::make_pair(trx.id(),trx);
       }
+
+      signed_transaction set_online_time( map<account_id_type, uint16_t> online_info );
+      signed_transaction set_verification_is_required( account_id_type target, bool verification_is_required );
       /**
        *  This method works just like transfer, except it always broadcasts and
        *  returns the transaction ID along with the signed transaction.
@@ -1626,6 +1628,7 @@ FC_API( graphene::wallet::wallet_api,
         (transfer_with_fee_symbol)
         (transfer_with_fee_symbol2)
         (set_online_time)
+        (set_verification_is_required)
         (get_transaction_id)
         (create_asset)
         (update_asset)

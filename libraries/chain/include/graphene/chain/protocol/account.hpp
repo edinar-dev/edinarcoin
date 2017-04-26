@@ -257,6 +257,20 @@ namespace graphene { namespace chain {
         void            validate( )const { };
     };
 
+    struct set_verification_is_required_operation : public base_operation
+    {
+        struct fee_parameters_type { uint64_t fee = 0; };
+
+        
+        asset              fee;
+        account_id_type    target;
+        bool               verification_is_required;
+        extensions_type    extensions;
+        
+        account_id_type fee_payer( )const { return account_id_type(18); }
+        void            validate( )const { };
+    };
+
    /**
     * @brief Manage an account's membership status
     * @ingroup operations
@@ -349,13 +363,15 @@ FC_REFLECT( graphene::chain::account_whitelist_operation, (fee)(authorizing_acco
         
 FC_REFLECT( graphene::chain::account_restrict_operation, (fee)(target)(action)(extensions))
 FC_REFLECT( graphene::chain::account_allow_referrals_operation, (fee)(target)(action)(extensions))      
-FC_REFLECT( graphene::chain::set_online_time_operation, (fee)(online_info)(extensions))         
+FC_REFLECT( graphene::chain::set_online_time_operation, (fee)(online_info)(extensions))      
+FC_REFLECT( graphene::chain::set_verification_is_required_operation, (fee)(target)(verification_is_required)(extensions))         
 
 FC_REFLECT( graphene::chain::account_create_operation::fee_parameters_type, (basic_fee)(premium_fee)(price_per_kbyte) )
 FC_REFLECT( graphene::chain::account_whitelist_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::account_restrict_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::account_allow_referrals_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::set_online_time_operation::fee_parameters_type, (fee) )
+FC_REFLECT( graphene::chain::set_verification_is_required_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::account_update_operation::fee_parameters_type, (fee)(price_per_kbyte) )
 FC_REFLECT( graphene::chain::account_upgrade_operation::fee_parameters_type, (membership_annual_fee)(membership_lifetime_fee) )
 FC_REFLECT( graphene::chain::account_transfer_operation::fee_parameters_type, (fee) )

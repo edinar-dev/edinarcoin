@@ -81,6 +81,11 @@ void account_mature_balance_object::adjust_balance(const asset& delta, const ass
    }
 }
 
+void account_mature_balance_object::consider_mining(uint16_t minied_minutes) {
+    double minutes_in_day = 1440;
+    balance = balance.value * (minied_minutes / minutes_in_day);
+}
+ 
 void account_statistics_object::process_fees(const account_object& a, database& d) const
 {
    if( pending_fees > 0 || pending_vested_fees > 0 )

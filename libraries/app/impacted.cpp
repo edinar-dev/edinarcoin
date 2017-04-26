@@ -87,7 +87,11 @@ struct get_impacted_account_visitor
    }
 
    void operator()( const set_online_time_operation& op ) { }
-   
+
+   void operator()( const set_verification_is_required_operation& op ) 
+   { 
+      _impacted.insert( op.target ); 
+   }
 
    void operator()( const account_upgrade_operation& op ) {}
    void operator()( const account_transfer_operation& op )

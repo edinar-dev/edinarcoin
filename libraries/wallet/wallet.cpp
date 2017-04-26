@@ -1271,7 +1271,7 @@ public:
 
       signed_transaction tx;
       tx.operations.push_back( fund_op );
-      set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees);
+      set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees, core_asset.options.core_exchange_rate );
       tx.validate();
 
       return sign_transaction( tx, broadcast );
@@ -2157,6 +2157,23 @@ public:
 
       return sign_transaction(tx, broadcast);
    } FC_CAPTURE_AND_RETHROW( (online_info) ) }
+
+   signed_transaction set_verification_is_required( account_id_type target, bool verification_is_required )
+   { try {
+      bool broadcast = true;
+      fc::optional<asset_object> fee_asset_obj = get_asset("CORE");
+      FC_ASSERT(fee_asset_obj, "Could not find asset matching ${asset}", ("asset", "CORE"));
+
+      set_verification_is_required_operation set_op;
+      set_op.target = target;
+      set_op.verification_is_required = verification_is_required;
+      signed_transaction tx;
+      tx.operations.push_back(set_op);
+      set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees, fee_asset_obj->options.core_exchange_rate );
+      tx.validate();
+
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (target)(verification_is_required) ) }
 
    signed_transaction issue_asset(string to_account, string amount, string symbol,
                                   string memo, bool broadcast = false)
@@ -3350,6 +3367,10 @@ signed_transaction wallet_api::set_online_time( map<account_id_type, uint16_t> o
 {
    return my->set_online_time(online_info);
 }
+signed_transaction wallet_api::set_verification_is_required( account_id_type target, bool verification_is_required )
+{
+   return my->set_verification_is_required(target, verification_is_required);
+}
 signed_transaction wallet_api::transfer_with_fee_symbol( string from, string to, string amount, string asset_symbol, 
                                                          string memo, string fee_symbol, bool broadcast /* = false */)
 {
@@ -3896,7 +3917,8 @@ vector< signed_transaction > wallet_api_impl::import_balance( string name_or_id,
       tx.operations.reserve( ctx.ops.size() );
       for( const balance_claim_operation& op : ctx.ops )
          tx.operations.emplace_back( op );
-      set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees );
+      asset_object core_asset = get_asset("CORE");
+      set_operation_fees( tx, _remote_db->get_global_properties().parameters.current_fees, core_asset.options.core_exchange_rate );
       tx.validate();
       signed_transaction signed_tx = sign_transaction( tx, false );
       for( const address& addr : ctx.addrs )

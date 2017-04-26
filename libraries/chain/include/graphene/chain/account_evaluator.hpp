@@ -101,4 +101,14 @@ public:
 
 };
 
+class set_verification_is_required_evaluator : public evaluator<set_verification_is_required_evaluator>
+{
+public:
+   typedef set_verification_is_required_operation operation_type;
+
+   void_result do_evaluate( const set_verification_is_required_operation& o);
+   void_result do_apply( const set_verification_is_required_operation& o);
+
+};
+
 } } // graphene::chain
