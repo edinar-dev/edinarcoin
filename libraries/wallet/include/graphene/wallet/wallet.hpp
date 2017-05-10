@@ -1523,9 +1523,11 @@ class wallet_api
 
 
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
-
+      void disable_backups() { no_backups = true; }
+      
       fc::signal<void(bool)> lock_changed;
       std::shared_ptr<detail::wallet_api_impl> my;
+      bool no_backups = false;
       void encrypt_keys();
 };
 

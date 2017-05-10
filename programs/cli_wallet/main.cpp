@@ -80,6 +80,7 @@ int main( int argc, char** argv )
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load")
          ("chain-id", bpo::value<string>(), "chain ID to connect to")
          ("delayed",  bpo::bool_switch(), "Connect to delayed node if specified")
+         ("no-backups",  bpo::bool_switch(), "Disable before\after import key backups creation if specified")
          ;
 
       bpo::variables_map options;
@@ -185,7 +186,9 @@ int main( int argc, char** argv )
       auto wapiptr = std::make_shared<wallet_api>( wdata, remote_api );
       wapiptr->set_wallet_filename( wallet_file.generic_string() );
       wapiptr->load_wallet_file();
-
+      if (options.count("no-backups") && options.at("no-backups").as<bool>())
+         wapiptr->disable_backups();
+         
       fc::api<wallet_api> wapi(wapiptr);
 
       auto wallet_cli = std::make_shared<fc::rpc::cli>();
